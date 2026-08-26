@@ -10,11 +10,13 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
 - One-time on-TV approval with a locally stored Samsung pairing token
 - Local artwork gallery with thumbnails, current-selection marker, and
   click-to-select control when the Frame Art service responds
-- Owner-selected JPEG/PNG upload to Samsung **My Photos**, plus built-in My
-  Photos sequential and shuffled slideshow controls
+- Owner-selected JPEG/PNG upload to Samsung **My Photos**, confirmed deletion
+  of My Photos, plus built-in sequential and shuffled slideshow controls
 - Power off and Wake-on-LAN
 - Navigation, volume, mute, channel, media, number, color, menu, source, and
   other Samsung remote keys
+- Task-focused Remote, Art, Photos, and Setup tabs; Remote adds Navigate,
+  Sound, Media, and TV subtabs so only one compact control set is visible
 - Art Mode entry plus feature-detected Art WebSocket requests
 - Portrait/landscape rotation using the LS03B `KEY_MULTI_VIEW` three-second hold
 - A built-in capability reference and visible errors for firmware gaps

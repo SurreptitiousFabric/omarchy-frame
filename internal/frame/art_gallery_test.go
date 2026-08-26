@@ -57,6 +57,13 @@ func TestUniqueArtItems(t *testing.T) {
 	}
 }
 
+func TestContainsArtIDOnlyAllowsMyPhotos(t *testing.T) {
+	items := []artItem{{ContentID: "mine", CategoryID: "MY-C0002"}, {ContentID: "store", CategoryID: "MY-C0008"}}
+	if !containsArtID(items, "mine") || containsArtID(items, "store") || containsArtID(items, "missing") {
+		t.Fatal("My Photos ownership check failed")
+	}
+}
+
 func TestReceiveThumbnailsRejectsUnsafeMetadata(t *testing.T) {
 	if _, err := receiveThumbnails(bytes.NewReader(thumbnailFrame(t, "unexpected", []byte("x"), 0, 1)), t.TempDir(), map[string]bool{"A": true}); err == nil {
 		t.Fatal("accepted unexpected id")

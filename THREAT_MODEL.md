@@ -35,6 +35,8 @@ cannot authenticate a public CA chain.
   it at 20 MB. The TV-provided upload endpoint is pinned to the configured TV.
 - The image picker executes the fixed `/usr/bin/zenity` path with a fixed
   argument vector and reads only its selected-path output; no shell is invoked.
+- Deletion accepts one validated content ID, re-reads the TV's My Photos list,
+  and refuses IDs outside that category. The UI requires a second confirmation.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

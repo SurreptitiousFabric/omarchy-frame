@@ -99,6 +99,35 @@ func selectArt(c *Config, id string) (map[string]any, error) {
 	return artCommand(c, map[string]any{"request": "select_image", "content_id": id, "show": true})
 }
 
+func deleteArt(c *Config, id string) (map[string]any, error) {
+	if !safeArtID.MatchString(id) {
+		return nil, errors.New("invalid artwork id")
+	}
+	listed, err := artRequest(c, "get_content_list", []string{"MY-C0002"})
+	if err != nil {
+		return nil, err
+	}
+	art, _ := listed["art"].(map[string]any)
+	raw, _ := art["content_list"].(string)
+	var items []artItem
+	if json.Unmarshal([]byte(raw), &items) != nil || !containsArtID(items, id) {
+		return nil, errors.New("only photos in My Photos can be deleted")
+	}
+	if _, err = artCommand(c, map[string]any{"request": "delete_image_list", "content_id_list": []map[string]string{{"content_id": id}}}); err != nil {
+		return nil, err
+	}
+	return map[string]any{"ok": true, "message": "Photo deleted from the TV", "deleted_id": id}, nil
+}
+
+func containsArtID(items []artItem, id string) bool {
+	for _, item := range items {
+		if item.ContentID == id && item.CategoryID == "MY-C0002" {
+			return true
+		}
+	}
+	return false
+}
+
 func artCommand(c *Config, data map[string]any) (map[string]any, error) {
 	id, err := artRequestID()
 	if err != nil {

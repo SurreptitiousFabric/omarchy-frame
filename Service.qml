@@ -10,6 +10,8 @@ Item {
   property var snapshot: ({ok: false, online: false, device: {}})
   property var devices: []
   property var gallery: []
+  property var artGallery: []
+  property var photosGallery: []
   property bool galleryLoaded: false
   property string selectedArtID: ""
   property var capabilities: []
@@ -37,8 +39,25 @@ Item {
   function rotate() { run(["rotate"],"Rotation toggled") }
   function wake() { run(["wake"],"Wake packet sent") }
   function loadGallery() { run(["gallery"],"") }
+  function setGallery(items) {
+    gallery = items || []
+    var arts = []
+    var photos = []
+    selectedArtID = ""
+    for (var i = 0; i < gallery.length; i++) {
+      var item = gallery[i]
+      if (item.current) selectedArtID = String(item.id)
+      if (!item.image) continue
+      if (String(item.category) === "MY-C0002") photos.push(item)
+      else arts.push(item)
+    }
+    artGallery = arts
+    photosGallery = photos
+    galleryLoaded = true
+  }
   function selectArt(id) { selectedArtID=String(id);run(["select-art",selectedArtID],"Artwork selected") }
   function uploadArt(fileUrl) { run(["upload-art",String(fileUrl)],"Photo uploaded and selected") }
+  function deleteArt(id) { run(["delete-art",String(id)],"Photo deleted from the TV") }
   function slideshow(minutes, shuffle) { run(["slideshow",String(minutes),shuffle?"shuffle":"sequential"],minutes>0?"My Photos slideshow started":"Slideshow stopped") }
   function art(request, value) { var a=["art",request];if(value!==undefined&&value!=="")a.push(String(value));run(a,"Art request sent") }
 
@@ -62,7 +81,16 @@ Item {
     command:[]
     stdout:StdioCollector{id:actionOut;waitForEnd:true}
     stderr:StdioCollector{id:actionErr;waitForEnd:true}
-    onExited:function(code){var p=root.parse(actionOut.text);if(code===0&&p&&p.ok){root.error="";if(p.items!==undefined){root.gallery=p.items||[];root.galleryLoaded=true;for(var i=0;i<root.gallery.length;i++)if(root.gallery[i].current)root.selectedArtID=String(root.gallery[i].id)}if(p.response)root.message=root.compact(JSON.stringify(p.response));else if(successText!=="")root.message=successText;else if(p.message)root.message=p.message}else root.error=root.compact((p&&p.error)||actionErr.text||"Command failed");refreshTimer.restart();Qt.callLater(root.next)}
+    onExited:function(code){
+      var p=root.parse(actionOut.text)
+      if(code===0&&p&&p.ok){
+        root.error=""
+        if(p.items!==undefined)root.setGallery(p.items)
+        if(p.content_id!==undefined||p.deleted_id!==undefined){root.galleryLoaded=false;root.pending.unshift({args:["gallery"],success:""})}
+        if(p.response)root.message=root.compact(JSON.stringify(p.response));else if(successText!=="")root.message=successText;else if(p.message)root.message=p.message
+      }else root.error=root.compact((p&&p.error)||actionErr.text||"Command failed")
+      refreshTimer.restart();Qt.callLater(root.next)
+    }
   }
   Timer{id:refreshTimer;interval:900;onTriggered:root.refresh()}
   Timer{interval:root.pollIntervalMs;repeat:true;running:true;onTriggered:if(root.panelOpen)root.refresh()}
