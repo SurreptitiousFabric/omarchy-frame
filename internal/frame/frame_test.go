@@ -177,6 +177,7 @@ func TestBarWidgetUsesNativePanelLifecycle(t *testing.T) {
 		"open: root.opened",
 		"onTabRequested: direction => root.moveControlFocus(direction)",
 		"onActivateRequested: root.activateFocusedControl()",
+		"onCloseRequested: root.close()\n\n            ColumnLayout {",
 		"revealControl(controls[next])",
 		"blocked: deleteConfirm.opened || setupPage.editorActive",
 	} {

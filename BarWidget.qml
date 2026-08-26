@@ -225,12 +225,11 @@ Panel {
             onActivateRequested: root.activateFocusedControl()
             onTabRequested: direction => root.moveControlFocus(direction)
             onCloseRequested: root.close()
-        }
 
-        ColumnLayout {
-            id: content
-            anchors.fill: parent
-            spacing: Style.space(10)
+            ColumnLayout {
+                id: content
+                anchors.fill: parent
+                spacing: Style.space(10)
 
             PanelHero {
                 Layout.fillWidth: true
@@ -362,6 +361,7 @@ Panel {
                         uiFont: root.uiFont
                     }
                 }
+            }
             }
         }
 
