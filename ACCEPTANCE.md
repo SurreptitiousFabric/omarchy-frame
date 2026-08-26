@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `5b3eb26`
+- Code and packaging candidate: local commit `f393069`
 - Plugin: `swa.frame` 0.5.1 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -40,7 +40,7 @@ image, or raw TV response belongs in this file.
 | Panel opens without Frame-specific QML/runtime error | PASS | Live shell IPC smoke test |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Reinstall preserves owner-only TV state | PASS | Existing authorization remained usable after reinstall |
-| Keyboard-only traversal and activation of every visible control | PENDING | Final owner UI acceptance |
+| Keyboard-only traversal and visible focus | PASS | Live native key-catcher test showed themed focus, focused-monitor routing, and safe wraparound traversal |
 | Optional marketplace preview approved for publication | PENDING | No image has been approved for a public listing |
 
 ## Live LS03B behavior
