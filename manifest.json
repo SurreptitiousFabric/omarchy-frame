@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "swa.frame",
+  "name": "Samsung Frame",
+  "version": "0.1.0",
+  "author": "swa",
+  "license": "MIT",
+  "description": "Local, keyboard-first control for Samsung The Frame TVs and Auto Rotating Accessories",
+  "kinds": ["service", "bar-widget"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Samsung Frame",
+    "description": "Power, remote, apps, Art Mode, and Auto Rotating Stand control",
+    "category": "System",
+    "defaultSection": "right",
+    "allowMultiple": false,
+    "defaults": {
+      "panelWidth": 430,
+      "panelHeight": 680,
+      "pollSeconds": 15
+    },
+    "schema": [
+      {"key":"panelWidth","type":"integer","label":"Panel width","min":380,"max":620,"step":10,"defaultValue":430},
+      {"key":"panelHeight","type":"integer","label":"Panel height","min":520,"max":860,"step":10,"defaultValue":680},
+      {"key":"pollSeconds","type":"integer","label":"Status refresh seconds","min":5,"max":120,"step":5,"defaultValue":15}
+    ]
+  }
+}
