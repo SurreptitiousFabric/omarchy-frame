@@ -11,7 +11,6 @@ Column {
     required property var service
     required property color frameForeground
     required property color frameDim
-    required property color softFill
     required property string uiFont
     property bool manualSetupOpen: false
     property bool capabilitiesOpen: false
@@ -25,41 +24,28 @@ Column {
     width: parent ? parent.width : 0
     spacing: Style.space(10)
 
-    component SoftButton: Button {
-        implicitHeight: 42
-        background: page.softFill
+    component PageButton: FrameButton {
         foreground: page.frameForeground
         fontFamily: page.uiFont
-        fontSize: Style.font.body
-        bordered: false
-        focusable: true
-    }
-    component QuietButton: Button {
-        implicitHeight: 40
-        background: "transparent"
-        foreground: page.frameForeground
-        fontFamily: page.uiFont
-        fontSize: Style.font.bodySmall
-        bordered: false
-        focusable: true
     }
 
     PanelSectionHeader { text: "TV CONNECTION"; foreground: page.frameForeground; fontFamily: page.uiFont }
-    SoftButton {
+    PageButton {
         text: "Find nearby TVs"
         width: parent.width
         onClicked: page.service.discover()
     }
     Repeater {
         model: page.service ? page.service.devices : []
-        SoftButton {
+        PageButton {
             required property var modelData
             width: parent.width
             text: String(modelData.name || modelData.model || modelData.ip)
             onClicked: page.service.configure(String(modelData.ip))
         }
     }
-    QuietButton {
+    PageButton {
+        quiet: true
         text: (page.manualSetupOpen ? "▾  " : "▸  ") + "Enter address manually"
         width: parent.width
         leftAlign: true
@@ -76,7 +62,7 @@ Column {
             inputMethodHints: Qt.ImhFormattedNumbersOnly
             font.family: page.uiFont
         }
-        SoftButton {
+        PageButton {
             text: "Save address"
             width: parent.width
             enabled: ipField.text.trim() !== ""
@@ -93,7 +79,8 @@ Column {
         font.family: page.uiFont
         font.pixelSize: Style.font.bodySmall
     }
-    QuietButton {
+    PageButton {
+        quiet: true
         text: (page.capabilitiesOpen ? "▾  " : "▸  ") + "Technical capabilities"
         width: parent.width
         leftAlign: true
@@ -108,7 +95,7 @@ Column {
             Column {
                 required property var modelData
                 width: parent.width
-                spacing: 2
+                spacing: Style.space(2)
                 Text {
                     text: String(parent.modelData.group || "")
                     font.bold: true

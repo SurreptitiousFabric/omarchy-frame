@@ -25,29 +25,15 @@ Column {
     onVisibleChanged: if (visible && service && !service.galleryLoaded)
         service.loadGallery()
 
-    component SoftButton: Button {
-        implicitHeight: 42
-        background: page.softFill
+    component PageButton: FrameButton {
         foreground: page.frameForeground
         fontFamily: page.uiFont
-        fontSize: Style.font.body
-        bordered: false
-        focusable: true
-    }
-    component QuietButton: Button {
-        implicitHeight: 40
-        background: "transparent"
-        foreground: page.frameForeground
-        fontFamily: page.uiFont
-        fontSize: Style.font.bodySmall
-        bordered: false
-        focusable: true
     }
 
     RowLayout {
         width: parent.width
         spacing: Style.space(8)
-        SoftButton {
+        PageButton {
             text: page.pickerRunning ? "Opening picker…" : "+  Upload photo"
             Layout.fillWidth: true
             enabled: !page.pickerRunning
@@ -58,12 +44,13 @@ Column {
             tooltipText: "Refresh photos"
             fontFamily: page.uiFont
             foreground: page.frameForeground
-            size: 42
+            size: Style.space(42)
             focusable: true
             onClicked: page.service.loadGallery()
         }
     }
-    QuietButton {
+    PageButton {
+        quiet: true
         text: (page.slideshowOpen ? "▾  " : "▸  ") + "Slideshow"
         width: parent.width
         leftAlign: true
@@ -73,17 +60,18 @@ Column {
         visible: page.slideshowOpen
         width: parent.width
         spacing: Style.space(8)
-        SoftButton {
+        PageButton {
             text: "Shuffle · 5 min"
             Layout.fillWidth: true
             onClicked: page.service.slideshow(5, true)
         }
-        SoftButton {
+        PageButton {
             text: "15 min"
             Layout.fillWidth: true
             onClicked: page.service.slideshow(15, false)
         }
-        QuietButton {
+        PageButton {
+            quiet: true
             text: "Stop"
             onClicked: page.service.slideshow(0, false)
         }

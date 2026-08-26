@@ -19,26 +19,12 @@ Column {
     width: parent ? parent.width : 0
     spacing: Style.space(14)
 
-    component SoftButton: Button {
-        implicitHeight: 42
-        background: page.softFill
+    component PageButton: FrameButton {
         foreground: page.frameForeground
         fontFamily: page.uiFont
-        fontSize: Style.font.body
-        bordered: false
-        focusable: true
-    }
-    component QuietButton: Button {
-        implicitHeight: 40
-        background: "transparent"
-        foreground: page.frameForeground
-        fontFamily: page.uiFont
-        fontSize: Style.font.bodySmall
-        bordered: false
-        focusable: true
     }
     component RoundButton: PanelActionButton {
-        size: 54
+        size: Style.space(54)
         fontFamily: page.uiFont
         fontSize: Style.font.title
         foreground: page.frameForeground
@@ -46,24 +32,20 @@ Column {
         focusable: true
     }
 
-    RowLayout {
+    FrameTabGroup {
         width: parent.width
-        spacing: Style.space(4)
-        Repeater {
-            model: [
-                { label: "Navigate", value: "navigate" },
-                { label: "Sound", value: "sound" },
-                { label: "Media", value: "media" },
-                { label: "More", value: "tv" }
-            ]
-            QuietButton {
-                required property var modelData
-                Layout.fillWidth: true
-                text: modelData.label
-                selected: page.section === modelData.value
-                onClicked: page.section = modelData.value
-            }
-        }
+        options: [
+            { label: "Navigate", value: "navigate" },
+            { label: "Sound", value: "sound" },
+            { label: "Media", value: "media" },
+            { label: "More", value: "tv" }
+        ]
+        value: page.section
+        foreground: page.frameForeground
+        background: "transparent"
+        fontFamily: page.uiFont
+        fontSize: Style.font.bodySmall
+        onChanged: value => page.section = value
     }
 
     Column {
@@ -73,23 +55,23 @@ Column {
 
         Rectangle {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 222
-            height: 222
-            radius: 111
+            width: Style.space(222)
+            height: width
+            radius: width / 2
             color: page.softFill
             GridLayout {
                 anchors.centerIn: parent
                 columns: 3
-                rowSpacing: 7
-                columnSpacing: 7
-                Item { Layout.preferredWidth: 54; Layout.preferredHeight: 54 }
+                rowSpacing: Style.space(7)
+                columnSpacing: Style.space(7)
+                Item { Layout.preferredWidth: Style.space(54); Layout.preferredHeight: Style.space(54) }
                 RoundButton { iconText: "▲"; onClicked: page.service.key("KEY_UP") }
-                Item { Layout.preferredWidth: 54; Layout.preferredHeight: 54 }
+                Item { Layout.preferredWidth: Style.space(54); Layout.preferredHeight: Style.space(54) }
                 RoundButton { iconText: "◀"; onClicked: page.service.key("KEY_LEFT") }
                 Button {
-                    Layout.preferredWidth: 58
-                    Layout.preferredHeight: 58
-                    radius: 29
+                    Layout.preferredWidth: Style.space(58)
+                    Layout.preferredHeight: Style.space(58)
+                    radius: width / 2
                     text: "OK"
                     selected: true
                     foreground: page.frameForeground
@@ -100,22 +82,22 @@ Column {
                     onClicked: page.service.key("KEY_ENTER")
                 }
                 RoundButton { iconText: "▶"; onClicked: page.service.key("KEY_RIGHT") }
-                Item { Layout.preferredWidth: 54; Layout.preferredHeight: 54 }
+                Item { Layout.preferredWidth: Style.space(54); Layout.preferredHeight: Style.space(54) }
                 RoundButton { iconText: "▼"; onClicked: page.service.key("KEY_DOWN") }
-                Item { Layout.preferredWidth: 54; Layout.preferredHeight: 54 }
+                Item { Layout.preferredWidth: Style.space(54); Layout.preferredHeight: Style.space(54) }
             }
         }
         RowLayout {
             width: parent.width
             spacing: Style.space(8)
-            SoftButton { text: "Back"; Layout.fillWidth: true; onClicked: page.service.key("KEY_RETURN") }
-            SoftButton { text: "Home"; Layout.fillWidth: true; onClicked: page.service.key("KEY_HOME") }
+            PageButton { text: "Back"; Layout.fillWidth: true; onClicked: page.service.key("KEY_RETURN") }
+            PageButton { text: "Home"; Layout.fillWidth: true; onClicked: page.service.key("KEY_HOME") }
         }
         RowLayout {
             width: parent.width
             spacing: Style.space(8)
-            QuietButton { text: "Source"; Layout.fillWidth: true; onClicked: page.service.key("KEY_SOURCE") }
-            QuietButton { text: "Rotate display"; Layout.fillWidth: true; onClicked: page.service.rotate() }
+            PageButton { quiet: true; text: "Source"; Layout.fillWidth: true; onClicked: page.service.key("KEY_SOURCE") }
+            PageButton { quiet: true; text: "Rotate display"; Layout.fillWidth: true; onClicked: page.service.rotate() }
         }
     }
 
@@ -133,7 +115,7 @@ Column {
                     { label: "Mute", key: "KEY_MUTE" },
                     { label: "+", key: "KEY_VOLUP" }
                 ]
-                SoftButton {
+                PageButton {
                     required property var modelData
                     Layout.fillWidth: true
                     text: modelData.label
@@ -152,7 +134,7 @@ Column {
                     { label: "Guide", key: "KEY_GUIDE" },
                     { label: "+", key: "KEY_CHUP" }
                 ]
-                SoftButton {
+                PageButton {
                     required property var modelData
                     Layout.fillWidth: true
                     text: modelData.label
@@ -169,9 +151,9 @@ Column {
         spacing: Style.space(16)
         Button {
             anchors.horizontalCenter: parent.horizontalCenter
-            width: 104
-            height: 104
-            radius: 52
+            width: Style.space(104)
+            height: width
+            radius: width / 2
             text: "Play / Pause"
             selected: true
             foreground: page.frameForeground
@@ -184,14 +166,14 @@ Column {
         RowLayout {
             width: parent.width
             spacing: Style.space(8)
-            SoftButton { text: "Previous"; Layout.fillWidth: true; onClicked: page.service.key("KEY_PREVIOUS") }
-            SoftButton { text: "Stop"; Layout.fillWidth: true; onClicked: page.service.key("KEY_STOP") }
+            PageButton { text: "Previous"; Layout.fillWidth: true; onClicked: page.service.key("KEY_PREVIOUS") }
+            PageButton { text: "Stop"; Layout.fillWidth: true; onClicked: page.service.key("KEY_STOP") }
         }
         RowLayout {
             width: parent.width
             spacing: Style.space(8)
-            QuietButton { text: "Rewind"; Layout.fillWidth: true; onClicked: page.service.key("KEY_REWIND") }
-            QuietButton { text: "Fast-forward"; Layout.fillWidth: true; onClicked: page.service.key("KEY_FF") }
+            PageButton { quiet: true; text: "Rewind"; Layout.fillWidth: true; onClicked: page.service.key("KEY_REWIND") }
+            PageButton { quiet: true; text: "Fast-forward"; Layout.fillWidth: true; onClicked: page.service.key("KEY_FF") }
         }
     }
 
@@ -212,7 +194,7 @@ Column {
                 { label: "Captions", key: "KEY_CAPTION" },
                 { label: "Exit", key: "KEY_EXIT" }
             ]
-            SoftButton {
+            PageButton {
                 required property var modelData
                 Layout.fillWidth: true
                 text: modelData.label

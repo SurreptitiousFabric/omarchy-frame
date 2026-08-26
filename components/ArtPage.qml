@@ -19,20 +19,15 @@ Column {
     onVisibleChanged: if (visible && service && !service.galleryLoaded)
         service.loadGallery()
 
-    component SoftButton: Button {
-        implicitHeight: 42
-        background: page.softFill
+    component PageButton: FrameButton {
         foreground: page.frameForeground
         fontFamily: page.uiFont
-        fontSize: Style.font.body
-        bordered: false
-        focusable: true
     }
 
     RowLayout {
         width: parent.width
         spacing: Style.space(8)
-        SoftButton {
+        PageButton {
             text: "TV / Art"
             Layout.fillWidth: true
             onClicked: page.service.key("KEY_POWER")
@@ -42,7 +37,7 @@ Column {
             tooltipText: "Refresh artwork"
             fontFamily: page.uiFont
             foreground: page.frameForeground
-            size: 42
+            size: Style.space(42)
             focusable: true
             onClicked: page.service.loadGallery()
         }

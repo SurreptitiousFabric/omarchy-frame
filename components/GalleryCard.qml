@@ -17,12 +17,12 @@ Rectangle {
     function activate() { selected(String(item.id)) }
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 138
+    Layout.preferredHeight: Style.space(138)
     activeFocusOnTab: true
     radius: Style.cornerRadius
     color: softFill
     clip: true
-    border.width: activeFocus || String(item.id) === selectedID ? 2 : 0
+    border.width: activeFocus || String(item.id) === selectedID ? Style.space(2) : 0
     border.color: Color.accent
     Accessible.role: Accessible.Button
     Accessible.name: deletable ? "Select photo" : "Select artwork"
@@ -55,7 +55,7 @@ Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        height: 46
+        height: Style.space(46)
         gradient: Gradient {
             GradientStop { position: 0; color: "transparent" }
             GradientStop { position: 1; color: Qt.rgba(0, 0, 0, 0.72) }
@@ -67,10 +67,10 @@ Rectangle {
         visible: String(card.item.id) === card.selectedID
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.margins: 9
-        width: selectedLabel.implicitWidth + 12
-        height: 23
-        radius: 12
+        anchors.margins: Style.space(9)
+        width: selectedLabel.implicitWidth + Style.space(12)
+        height: Style.space(23)
+        radius: height / 2
         color: Color.accent
 
         Text {
@@ -89,8 +89,8 @@ Rectangle {
         visible: card.deletable
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.margins: 7
-        size: 30
+        anchors.margins: Style.space(7)
+        size: Style.space(30)
         iconText: "×"
         tooltipText: "Delete photo"
         fontFamily: card.uiFont

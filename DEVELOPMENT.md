@@ -8,7 +8,10 @@ port and uses only the Go standard library; Avahi is an optional Omarchy-provide
 discovery fallback.
 
 `BarWidget.qml` composes the panel. Focused tab and card/icon implementations
-live under `components/`; `Service.qml` is the only UI/backend boundary.
+live under `components/`; `Service.qml` is the only UI/backend boundary. The UI
+inherits `bar.fontFamily`, uses `Style.space()` for fixed geometry, and composes
+controls from `qs.Ui`; `scripts/test-ui-contract.sh` enforces those Omarchy
+design-system boundaries.
 
 ## Build and test
 
@@ -22,6 +25,7 @@ go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 scripts/build-release.sh
 scripts/test-packaged-runtime.sh
 scripts/test-repository-policy.sh
+scripts/test-ui-contract.sh
 omarchy plugin validate .
 ```
 

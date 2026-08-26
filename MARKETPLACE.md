@@ -14,8 +14,8 @@ Submission requirements last reviewed 2026-08-26 against
 - Tags: `quickshell`, `system`, `power-management`
 - Preview: omitted
 - License: MIT
-- External runtime dependencies: Omarchy/Quickshell and optional `avahi-browse`
-  discovery fallback; users do not need Go
+- External runtime dependencies: Omarchy/Quickshell, Omarchy's Zenity file
+  chooser, and optional `avahi-browse` discovery fallback; users do not need Go
 
 The marketplace's current static baseline engine was run locally against exact
 candidate `c39bdaf20975336544c18f54e0dcc3d00a00406d`. It returned

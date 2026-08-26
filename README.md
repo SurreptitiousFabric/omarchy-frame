@@ -27,6 +27,17 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
 The TV and computer must share a trusted local network. Nothing is sent to a
 cloud service.
 
+## Requirements
+
+- Omarchy with its Quickshell shell on Linux AMD64 or ARM64
+- The Omarchy-provided Zenity file chooser for photo upload
+- A compatible Samsung Frame TV on the same trusted LAN
+- Optional `avahi-browse`, normally supplied by Omarchy, as a discovery
+  fallback when SSDP does not find the TV
+
+Go is not a runtime requirement. It is needed only by contributors rebuilding
+the bundled backend.
+
 ## Install
 
 The public repository includes release binaries, so installation does not need

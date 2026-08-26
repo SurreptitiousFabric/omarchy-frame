@@ -41,6 +41,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 ### Changed
 
+- Follow Omarchy's shell design system throughout the panel: inherit the active
+  bar font, scale fixed geometry with `Style.space()`, compose tab rows from the
+  native `ButtonGroup`, and share one theme-aware page button component.
 - Adopt the permanent marketplace ID
   `io.github.surreptitiousfabric.omarchy-frame`, align the author namespace,
   and resolve the bundled backend from Omarchy's injected plugin source path.

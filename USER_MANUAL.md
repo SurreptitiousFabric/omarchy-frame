@@ -17,7 +17,8 @@ refreshed every 15 seconds while the panel is open by default.
 Use **Tab** and **Shift+Tab** to move through controls, then **Enter**,
 **Return**, or **Space** to activate the focused control. Artwork and photo
 cards participate in the same focus route; deleting a photo remains a separate
-focused action followed by confirmation.
+focused action followed by confirmation. When a tab row has focus, use
+**Left/Right** or **H/L** to choose a tab, then activate it.
 
 ## Setup
 
@@ -80,6 +81,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 | Uploaded photo is missing | Gallery still reflects the previous TV list | Wait for the automatic refresh or press Refresh gallery |
 | Rotate says sent but does not move | Stand not paired | Follow the physical-remote pairing steps above |
 | “Not available” during pairing | Network remote chord rejected | A compatible physical Smart Remote is required |
+| State permissions are unsafe | The plugin refused a group/world-accessible or linked state path | Ensure `~/.local/state/omarchy-frame` is an owner-only real directory (`0700`) and `config.json` is an owner-only regular file (`0600`), then retry |
 
 ## Remove and revoke
 

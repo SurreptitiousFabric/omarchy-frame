@@ -20,7 +20,7 @@ Panel {
     readonly property color panelForeground: bar ? bar.foreground : Color.foreground
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
     readonly property color softFill: Style.normalFillFor(panelForeground, Color.accent)
-    readonly property string uiFont: "sans-serif"
+    readonly property string uiFont: bar ? bar.fontFamily : Style.font.family
     readonly property string mode: {
         if (!service || !service.snapshot || !service.snapshot.ok)
             return "unknown";
@@ -37,22 +37,22 @@ Panel {
 
     readonly property int naturalPanelHeight: {
         if (page === "art" || page === "photos")
-            return 620;
+            return Style.space(620);
         if (page === "setup") {
             var setupHeight = 420;
             if (setupPage.manualSetupOpen)
                 setupHeight += 110;
             if (setupPage.capabilitiesOpen)
                 setupHeight += 170;
-            return Math.min(700, setupHeight);
+            return Style.space(Math.min(700, setupHeight));
         }
         if (remotePageView.section === "navigate")
-            return 520;
+            return Style.space(520);
         if (remotePageView.section === "media")
-            return 450;
+            return Style.space(450);
         if (remotePageView.section === "tv")
-            return 470;
-        return 400;
+            return Style.space(470);
+        return Style.space(400);
     }
 
     function appendFocusable(item, result) {
@@ -103,6 +103,18 @@ Panel {
         var next = current < 0 ? (direction < 0 ? controls.length - 1 : 0) : (current + (direction < 0 ? -1 : 1) + controls.length) % controls.length;
         controls[next].forceActiveFocus(Qt.TabFocusReason);
         revealControl(controls[next]);
+    }
+
+    function moveControlCursor(dx, dy) {
+        var controls = focusableControls();
+        for (var i = 0; i < controls.length; i++) {
+            var control = controls[i];
+            if (control.activeFocus && dx !== 0 && typeof control.moveFocused === "function") {
+                control.moveFocused(dx);
+                return;
+            }
+        }
+        moveControlFocus(dx + dy < 0 ? -1 : 1);
     }
 
     function activateFocusedControl() {
@@ -188,7 +200,7 @@ Panel {
 
     FrameTvIcon {
         anchors.centerIn: parent
-        iconSize: Math.max(14, Style.font.body)
+        iconSize: Math.max(Style.bar.iconCanvas, Style.font.icon)
         stroke: root.bar ? root.bar.barForeground : Color.foreground
     }
 
@@ -214,14 +226,14 @@ Panel {
         owner: root
         open: root.opened
         focusTarget: keyCatcher
-        contentWidth: popup.fittedContentWidth(Math.max(410, Math.min(540, Number(root.setting("panelWidth", 440)))))
-        contentHeight: popup.cappedContentHeight(Math.min(root.naturalPanelHeight, Math.max(400, Math.min(700, Number(root.setting("panelHeight", 620))))))
+        contentWidth: popup.fittedContentWidth(Style.space(Math.max(410, Math.min(540, Number(root.setting("panelWidth", 440))))))
+        contentHeight: popup.cappedContentHeight(Math.min(root.naturalPanelHeight, Style.space(Math.max(400, Math.min(700, Number(root.setting("panelHeight", 620)))))))
 
         PanelKeyCatcher {
             id: keyCatcher
             anchors.fill: parent
             blocked: deleteConfirm.opened || setupPage.editorActive
-            onMoveRequested: function(dx, dy) { root.moveControlFocus(dx + dy < 0 ? -1 : 1) }
+            onMoveRequested: function(dx, dy) { root.moveControlCursor(dx, dy) }
             onActivateRequested: root.activateFocusedControl()
             onTabRequested: direction => root.moveControlFocus(direction)
             onCloseRequested: root.close()
@@ -252,46 +264,24 @@ Panel {
                 font.pixelSize: Style.font.caption
             }
 
-            RowLayout {
+            FrameTabGroup {
                 Layout.fillWidth: true
-                spacing: Style.space(4)
-                Repeater {
-                    model: [
-                        {
-                            label: "Remote",
-                            value: "remote"
-                        },
-                        {
-                            label: "Art",
-                            value: "art"
-                        },
-                        {
-                            label: "Photos",
-                            value: "photos"
-                        },
-                        {
-                            label: "Setup",
-                            value: "setup"
-                        }
-                    ]
-                    Button {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        text: modelData.label
-                        selected: root.page === modelData.value
-                        foreground: root.panelForeground
-                        background: "transparent"
-                        accent: Color.accent
-                        fontFamily: root.uiFont
-                        fontSize: Style.font.bodySmall
-                        bordered: false
-                        focusable: true
-                        onClicked: {
-                            root.page = modelData.value;
-                            if ((root.page === "art" || root.page === "photos") && root.service && !root.service.galleryLoaded)
-                                root.service.loadGallery();
-                        }
-                    }
+                options: [
+                    { label: "Remote", value: "remote" },
+                    { label: "Art", value: "art" },
+                    { label: "Photos", value: "photos" },
+                    { label: "Setup", value: "setup" }
+                ]
+                value: root.page
+                foreground: root.panelForeground
+                background: "transparent"
+                accent: Color.accent
+                fontFamily: root.uiFont
+                fontSize: Style.font.bodySmall
+                onChanged: function (value) {
+                    root.page = value;
+                    if ((value === "art" || value === "photos") && root.service && !root.service.galleryLoaded)
+                        root.service.loadGallery();
                 }
             }
 
@@ -334,7 +324,6 @@ Panel {
                         service: root.service
                         frameForeground: root.panelForeground
                         frameDim: root.panelDim
-                        softFill: root.softFill
                         uiFont: root.uiFont
                     }
 
