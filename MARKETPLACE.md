@@ -18,7 +18,7 @@ Submission requirements last reviewed 2026-08-26 against
   chooser, and optional `avahi-browse` discovery fallback; users do not need Go
 
 The marketplace's current static baseline engine was run locally against exact
-candidate `c39bdaf20975336544c18f54e0dcc3d00a00406d`. It returned
+candidate `55e95e78cbe1baaa3d0fa7f7c851d0f663eba96d`. It returned
 `review-required` with no findings and no approval block. Its only capability
 was `bundled-executable-binary`, which is intentional: static ARM64 and AMD64
 backends let users install the plugin without Go. Marketplace publication will

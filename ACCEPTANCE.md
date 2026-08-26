@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `c39bdaf`
+- Code and packaging candidate: local commit `55e95e7`
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -21,30 +21,31 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `c39bdaf` |
+| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `55e95e7` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
-| QML parses and loads in Omarchy shell | PASS | Standalone lint plus live shell load |
+| QML parses and loads in Omarchy shell | PASS | Live shell load/render with no Frame QML error plus windowless Quickshell component execution |
+| Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `c39bdaf` |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `55e95e7` |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `c39bdaf`; race, vet, manifest, repository policy, checksum, and no-Go runtime gates passed |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `55e95e7`; race, vet, vulnerability, QML runtime, manifest, repository policy, checksum, and no-Go gates passed |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
-| Marketplace static security baseline | PASS | Current engine on exact `c39bdaf`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
+| Marketplace static security baseline | PASS | Current engine on exact `55e95e7`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
 | CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Exact `c39bdaf` local `file://` install under the permanent ID |
+| Git-backed install through `omarchy plugin add` | PASS | Exact `55e95e7` local `file://` install/update under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
 | Panel opens without Frame-specific QML/runtime error | PASS | Live shell IPC smoke test |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
-| Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher test showed themed focus, focused-monitor routing, and Escape dismissal after focus moved into a control |
+| Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |
 | Optional marketplace preview | N/A | Intentionally omitted; the marketplace permits repositories without one |
 
 ## Live LS03B behavior
@@ -53,7 +54,7 @@ image, or raw TV response belongs in this file.
 |---|---|---|
 | Discover expected television | PASS | Initial live setup |
 | One-time on-TV authorization and `0600` token state | PASS | Initial live setup and permission check |
-| Sanitized status contains no token or private endpoint | PASS | Raw live JSON allowlist plus exact stored IP/MAC non-occurrence and IPv4/IPv6/token redaction tests |
+| Sanitized status contains no token or private endpoint | PASS | Exact-candidate raw offline JSON allowlist, stored IP/MAC/token non-occurrence, unchanged state hash, and IPv4/IPv6/token redaction tests |
 | Ordinary remote and power/status control | PASS | Initial live acceptance |
 | Wake-on-LAN after full power-off | PENDING | Requires an observer near the television |
 | Confirmed Art Mode status | PASS | Repeated live Art `on` response |
