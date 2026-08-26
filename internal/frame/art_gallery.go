@@ -29,15 +29,25 @@ type artItem struct {
 }
 
 func artGallery(c *Config) (map[string]any, error) {
-	listed, err := artRequest(c, "get_content_list", []string{"MY-C0008"})
-	if err != nil {
-		return nil, err
-	}
-	art, _ := listed["art"].(map[string]any)
-	raw, _ := art["content_list"].(string)
 	var items []artItem
-	if err := json.Unmarshal([]byte(raw), &items); err != nil {
-		return nil, errors.New("TV returned an invalid artwork list")
+	var lastErr error
+	for _, category := range []string{"MY-C0008", "MY-C0002"} {
+		listed, err := artRequest(c, "get_content_list", []string{category})
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		art, _ := listed["art"].(map[string]any)
+		raw, _ := art["content_list"].(string)
+		var categoryItems []artItem
+		if err := json.Unmarshal([]byte(raw), &categoryItems); err != nil {
+			lastErr = errors.New("TV returned an invalid artwork list")
+			continue
+		}
+		items = append(items, categoryItems...)
+	}
+	if len(items) == 0 && lastErr != nil {
+		return nil, lastErr
 	}
 	if len(items) > 100 {
 		return nil, errors.New("TV returned too many artworks")

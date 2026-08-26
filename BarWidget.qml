@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import Quickshell
 import qs.Commons
 import qs.Ui
@@ -15,6 +16,7 @@ BarWidget {
   property string page: "remote"
   function close(){popupOpen=false} function open(){popupOpen=true} function toggle(){popupOpen=!popupOpen}
   readonly property bool opened: popupOpen
+  FileDialog{id:photoPicker;title:"Upload a photo to The Frame";nameFilters:["Images (*.jpg *.jpeg *.png)"];onAccepted:if(service)service.uploadArt(selectedFile)}
   onPopupOpenChanged:{if(service){service.pollIntervalMs=Math.max(5,Math.min(120,Number(root.setting("pollSeconds",15))))*1000;service.panelOpen=popupOpen;if(popupOpen)service.refresh()}}
   implicitWidth: barSize; implicitHeight: barSize; opacity:service&&service.snapshot.online?1:0.6
 
@@ -59,6 +61,13 @@ BarWidget {
               Button{text:"Enter Art Mode";Layout.fillWidth:true;onClicked:service.key("KEY_AMBIENT")}
               Button{text:"Refresh gallery";Layout.fillWidth:true;onClicked:service.loadGallery()}
             }
+            Button{text:"＋ Upload your photo";width:parent.width;onClicked:photoPicker.open()}
+            Text{text:"MY PHOTOS SLIDESHOW";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
+            RowLayout{width:parent.width
+              Button{text:"5 min shuffle";Layout.fillWidth:true;onClicked:service.slideshow(5,true)}
+              Button{text:"15 min";Layout.fillWidth:true;onClicked:service.slideshow(15,false)}
+              Button{text:"Stop";Layout.fillWidth:true;onClicked:service.slideshow(0,false)}
+            }
             Text{visible:service&&!service.galleryLoaded;width:parent.width;text:"Loading artwork from your TV…";horizontalAlignment:Text.AlignHCenter;color:root.panelDim;font.pixelSize:Style.font.body}
             GridLayout{visible:service&&service.galleryLoaded;columns:2;width:parent.width;rowSpacing:Style.space(8);columnSpacing:Style.space(8)
               Repeater{model:service?service.gallery:[]
@@ -72,7 +81,7 @@ BarWidget {
                 }
               }
             }
-            Text{visible:service&&service.galleryLoaded;width:parent.width;text:"The TV provides pictures and dates, but not reliable artwork titles or artist names.";wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
+            Text{visible:service&&service.galleryLoaded;width:parent.width;text:"Uploads are stored by Samsung under My Photos. The slideshow includes every photo there; named app-only collections come after upload is confirmed on this TV.";wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
           }
           Column{visible:root.page==="setup";width:parent.width;spacing:Style.space(9)
             Button{text:"Discover Frame TVs";width:parent.width;onClicked:service.discover()}

@@ -25,9 +25,9 @@ it as a credential.
 
 - **Remote:** navigation, Home/Back, volume, mute, channels, guide, playback,
   source, info/tools/menu, and rotation.
-- **Art:** browse artwork thumbnails stored on the TV, see the current
-  selection, and choose another artwork. The TV does not provide reliable
-  titles or artist names.
+- **Art:** browse artwork thumbnails stored on the TV, choose another artwork,
+  upload a local JPEG/PNG into **My Photos**, and start or stop a My Photos
+  slideshow. The TV does not provide reliable titles or artist names.
 - **Setup:** discovery, manual address, approval, and stand instructions.
 - **API:** plain-language capability groups.
 
@@ -55,6 +55,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 | TV offline | TV asleep or address changed | Use Wake; rediscover; reserve its address |
 | Wake fails | MAC was never learned or broadcast blocked | Discover once while on; check router Wi-Fi broadcast policy |
 | Art request fails | Firmware changed/disabled Art socket | Ordinary remote control remains available |
+| Upload fails | Unsupported image, TV storage full, or Art service declined transfer | Try a JPEG/PNG under 20 MB; ensure Art Mode has completed its first-use setup |
 | Rotate says sent but does not move | Stand not paired | Follow the physical-remote pairing steps above |
 | “Not available” during pairing | Network remote chord rejected | A compatible physical Smart Remote is required |
 

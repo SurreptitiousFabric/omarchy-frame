@@ -5,6 +5,7 @@
 - Samsung pairing token
 - TV availability and control authority
 - User filesystem and long-lived Omarchy shell process
+- User-selected local photos
 - Private LAN topology and device metadata
 
 ## Trust boundaries
@@ -29,6 +30,9 @@ cannot authenticate a public CA chain.
   ports, headers, IDs, file sizes, and item counts are validated and bounded.
 - Artwork thumbnails are cached under owner-only local state with hashed names
   and owner-only file permissions.
+- Uploads accept only an explicitly selected absolute local file URL/path, open
+  it without invoking a shell, require a regular JPEG/PNG by signature, and cap
+  it at 20 MB. The TV-provided upload endpoint is pinned to the configured TV.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

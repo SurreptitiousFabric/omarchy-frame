@@ -10,6 +10,8 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
 - One-time on-TV approval with a locally stored Samsung pairing token
 - Local artwork gallery with thumbnails, current-selection marker, and
   click-to-select control when the Frame Art service responds
+- Owner-selected JPEG/PNG upload to Samsung **My Photos**, plus built-in My
+  Photos sequential and shuffled slideshow controls
 - Power off and Wake-on-LAN
 - Navigation, volume, mute, channel, media, number, color, menu, source, and
   other Samsung remote keys
@@ -79,8 +81,9 @@ you want to revoke its token.
 
 Omarchy plugins run unsandboxed. This plugin spawns only its bundled backend.
 The backend accepts fixed commands, validates IP addresses, remote key names,
-hold durations, and app IDs, limits network response sizes, and never opens a
-listening port. Samsung uses a self-signed certificate on the local secure TV
+hold durations, image signatures and sizes, limits network response sizes, and
+never opens a listening port. Upload transfer endpoints are pinned to the
+configured TV. Samsung uses a self-signed certificate on the local secure TV
 WebSocket, so certificate-chain verification is unavailable; the connection
 is restricted to the configured numeric IP and Samsung port 8002.
 

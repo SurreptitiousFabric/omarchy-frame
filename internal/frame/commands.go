@@ -28,7 +28,7 @@ func lanHTTPClient(timeout time.Duration) http.Client {
 
 func Run(args []string) (map[string]any, error) {
 	if len(args) == 0 {
-		return nil, errors.New("usage: frame-controller <discover|configure|status|key|hold|rotate|wake|art|gallery|select-art>")
+		return nil, errors.New("usage: frame-controller <discover|configure|status|key|hold|rotate|wake|art|gallery|select-art|upload-art|slideshow>")
 	}
 	c, e := loadConfig()
 	if e != nil {
@@ -104,6 +104,23 @@ func Run(args []string) (map[string]any, error) {
 			return nil, errors.New("select-art requires a content id")
 		}
 		return selectArt(&c, args[1])
+	case "upload-art":
+		if len(args) != 2 {
+			return nil, errors.New("upload-art requires one local image")
+		}
+		return uploadArt(&c, args[1])
+	case "slideshow":
+		if len(args) != 3 {
+			return nil, errors.New("slideshow requires minutes and sequential|shuffle")
+		}
+		minutes, err := strconv.Atoi(args[1])
+		if err != nil || minutes < 0 || minutes > 1440 {
+			return nil, errors.New("slideshow minutes must be 0-1440")
+		}
+		if args[2] != "sequential" && args[2] != "shuffle" {
+			return nil, errors.New("slideshow order must be sequential or shuffle")
+		}
+		return setMyPhotosSlideshow(&c, minutes, args[2] == "shuffle")
 	default:
 		return nil, fmt.Errorf("unknown command %q", cmd)
 	}
@@ -111,7 +128,7 @@ func Run(args []string) (map[string]any, error) {
 
 func capabilities() []map[string]string {
 	return []map[string]string{
-		{"group": "Power", "items": "Wake-on-LAN, power off, Art Mode toggle"}, {"group": "Remote", "items": "navigation, home, back, menu, numbers, color keys, tools, info"}, {"group": "Media", "items": "play, pause, stop, record, rewind, fast-forward, previous, next"}, {"group": "Sound", "items": "volume up/down, mute"}, {"group": "Channels", "items": "channel up/down, guide, channel list"}, {"group": "Sources", "items": "source menu and HDMI keys where firmware accepts them"}, {"group": "The Frame", "items": "browse local artwork thumbnails, show the current selection, and select artwork"}, {"group": "Rotating stand", "items": "three-second Multi View hold toggles portrait/landscape on LS03B"}}
+		{"group": "Power", "items": "Wake-on-LAN, power off, Art Mode toggle"}, {"group": "Remote", "items": "navigation, home, back, menu, numbers, color keys, tools, info"}, {"group": "Media", "items": "play, pause, stop, record, rewind, fast-forward, previous, next"}, {"group": "Sound", "items": "volume up/down, mute"}, {"group": "Channels", "items": "channel up/down, guide, channel list"}, {"group": "Sources", "items": "source menu and HDMI keys where firmware accepts them"}, {"group": "The Frame", "items": "browse artwork, upload personal photos, select artwork, and rotate My Photos as a slideshow"}, {"group": "Rotating stand", "items": "three-second Multi View hold toggles portrait/landscape on LS03B"}}
 }
 
 func artRequest(c *Config, request string, args []string) (map[string]any, error) {

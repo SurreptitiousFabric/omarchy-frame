@@ -38,6 +38,8 @@ Item {
   function wake() { run(["wake"],"Wake packet sent") }
   function loadGallery() { run(["gallery"],"") }
   function selectArt(id) { selectedArtID=String(id);run(["select-art",selectedArtID],"Artwork selected") }
+  function uploadArt(fileUrl) { run(["upload-art",String(fileUrl)],"Photo uploaded and selected") }
+  function slideshow(minutes, shuffle) { run(["slideshow",String(minutes),shuffle?"shuffle":"sequential"],minutes>0?"My Photos slideshow started":"Slideshow stopped") }
   function art(request, value) { var a=["art",request];if(value!==undefined&&value!=="")a.push(String(value));run(a,"Art request sent") }
 
   Process {
