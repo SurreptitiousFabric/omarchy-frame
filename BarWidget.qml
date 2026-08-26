@@ -7,6 +7,7 @@ import Quickshell
 import Quickshell.Io
 import qs.Commons
 import qs.Ui
+import "components"
 
 BarWidget {
     id: root
@@ -22,19 +23,15 @@ BarWidget {
         if (!service || !service.snapshot || !service.snapshot.ok)
             return "unknown";
         if (!service.snapshot.online)
-            return "off";
+            return "offline";
         var value = String(service.snapshot.mode || "unknown").toLowerCase();
         return value === "art" || value === "tv" ? value : "unknown";
     }
-    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "off" ? "OFF" : "ART / TV?"
-    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "off" ? "Samsung Frame · off" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · Samsung did not report a reliable mode" : "Samsung Frame · checking status"
+    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "offline" ? "OFFLINE" : "ART / TV?"
+    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "offline" ? "Samsung Frame · unreachable" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · Samsung did not report a reliable mode" : "Samsung Frame · checking status"
 
     property bool popupOpen: false
     property string page: "remote"
-    property string remotePage: "navigate"
-    property bool slideshowOpen: false
-    property bool manualSetupOpen: false
-    property bool setupCapabilitiesOpen: false
     property string pendingDeleteID: ""
 
     readonly property bool opened: popupOpen
@@ -43,17 +40,17 @@ BarWidget {
             return 620;
         if (page === "setup") {
             var setupHeight = 420;
-            if (manualSetupOpen)
+            if (setupPage.manualSetupOpen)
                 setupHeight += 110;
-            if (setupCapabilitiesOpen)
+            if (setupPage.capabilitiesOpen)
                 setupHeight += 170;
             return Math.min(700, setupHeight);
         }
-        if (remotePage === "navigate")
+        if (remotePageView.section === "navigate")
             return 520;
-        if (remotePage === "media")
+        if (remotePageView.section === "media")
             return 450;
-        if (remotePage === "tv")
+        if (remotePageView.section === "tv")
             return 470;
         return 400;
     }
@@ -68,161 +65,9 @@ BarWidget {
         popupOpen = !popupOpen;
     }
 
-    component SoftButton: Button {
-        implicitHeight: 42
-        background: root.softFill
-        foreground: root.panelForeground
-        fontFamily: root.uiFont
-        fontSize: Style.font.body
-        bordered: false
-        focusable: true
-    }
-
-    component QuietButton: Button {
-        implicitHeight: 40
-        background: "transparent"
-        foreground: root.panelForeground
-        fontFamily: root.uiFont
-        fontSize: Style.font.bodySmall
-        bordered: false
-        focusable: true
-    }
-
-    component RoundButton: PanelActionButton {
-        size: 54
-        fontFamily: root.uiFont
-        fontSize: Style.font.title
-        foreground: root.panelForeground
-        bordered: false
-        focusable: true
-    }
-
-    component TvIcon: Item {
-        property color stroke: root.panelForeground
-        property real iconSize: 24
-
-        implicitWidth: iconSize
-        implicitHeight: iconSize
-
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height * 0.10
-            width: parent.width * 0.82
-            height: parent.height * 0.62
-            radius: Math.max(1, parent.width * 0.06)
-            color: "transparent"
-            border.color: parent.stroke
-            border.width: Math.max(1, Math.round(parent.width * 0.08))
-        }
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height * 0.72
-            width: Math.max(1, parent.width * 0.08)
-            height: parent.height * 0.12
-            color: parent.stroke
-        }
-        Rectangle {
-            anchors.horizontalCenter: parent.horizontalCenter
-            y: parent.height * 0.84
-            width: parent.width * 0.42
-            height: Math.max(1, parent.height * 0.07)
-            radius: height / 2
-            color: parent.stroke
-        }
-    }
-
-    component GalleryCard: Rectangle {
-        id: card
-
-        required property var item
-        property bool deletable: false
-        signal selected(string id)
-        signal deleteRequested(string id)
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: 138
-        radius: Style.cornerRadius
-        color: root.softFill
-        clip: true
-        border.width: String(item.id) === root.service.selectedArtID ? 2 : 0
-        border.color: Color.accent
-
-        Image {
-            anchors.fill: parent
-            anchors.margins: card.border.width
-            source: "file://" + String(card.item.image)
-            fillMode: Image.PreserveAspectCrop
-            asynchronous: true
-            cache: true
-        }
-
-        Rectangle {
-            z: 1
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            height: 46
-            gradient: Gradient {
-                GradientStop {
-                    position: 0
-                    color: "transparent"
-                }
-                GradientStop {
-                    position: 1
-                    color: Qt.rgba(0, 0, 0, 0.72)
-                }
-            }
-        }
-
-        Rectangle {
-            z: 2
-            visible: String(card.item.id) === root.service.selectedArtID
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            anchors.margins: 9
-            width: selectedLabel.implicitWidth + 12
-            height: 23
-            radius: 12
-            color: Color.accent
-
-            Text {
-                id: selectedLabel
-                anchors.centerIn: parent
-                text: "ON TV"
-                color: Color.background
-                font.family: root.uiFont
-                font.pixelSize: Style.font.caption
-                font.bold: true
-            }
-        }
-
-        PanelActionButton {
-            z: 3
-            visible: card.deletable
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            anchors.margins: 7
-            size: 30
-            iconText: "×"
-            tooltipText: "Delete photo"
-            fontFamily: root.uiFont
-            fontSize: Style.font.title
-            foreground: "white"
-            hoverColor: Color.urgent
-            onClicked: card.deleteRequested(String(card.item.id))
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            z: 0
-            cursorShape: Qt.PointingHandCursor
-            onClicked: card.selected(String(card.item.id))
-        }
-    }
-
     Component {
         id: frameIcon
-        TvIcon {
+        FrameTvIcon {
             iconSize: Style.font.display
             stroke: root.service && root.service.snapshot.online ? Color.accent : root.panelDim
         }
@@ -249,7 +94,7 @@ BarWidget {
                 foreground: root.service && root.service.snapshot.online ? root.panelForeground : Color.accent
                 background: "transparent"
                 bordered: false
-                onClicked: root.service && (root.service.snapshot.online ? root.service.key("KEY_POWER") : root.service.wake())
+                onClicked: root.service && (root.service.snapshot.online ? root.service.powerOff() : root.service.wake())
             }
         }
     }
@@ -270,11 +115,10 @@ BarWidget {
 
     onPopupOpenChanged: {
         if (!popupOpen) {
-            remotePage = "navigate";
+            remotePageView.reset();
             pendingDeleteID = "";
-            slideshowOpen = false;
-            manualSetupOpen = false;
-            setupCapabilitiesOpen = false;
+            photosPage.reset();
+            setupPage.reset();
         }
         if (service) {
             service.pollIntervalMs = Math.max(5, Math.min(120, Number(root.setting("pollSeconds", 15)))) * 1000;
@@ -288,7 +132,7 @@ BarWidget {
     implicitHeight: barSize
     opacity: service && service.snapshot.online ? 1 : 0.6
 
-    TvIcon {
+    FrameTvIcon {
         anchors.centerIn: parent
         iconSize: Math.max(14, Style.font.body)
         stroke: root.bar ? root.bar.barForeground : Color.foreground
@@ -419,538 +263,46 @@ BarWidget {
                     width: scrollArea.availableWidth
                     spacing: Style.space(12)
 
-                    Column {
+                    RemotePage {
+                        id: remotePageView
                         visible: root.page === "remote"
-                        width: parent.width
-                        spacing: Style.space(14)
+                        service: root.service
+                        frameForeground: root.panelForeground
+                        softFill: root.softFill
+                        uiFont: root.uiFont
 
-                        RowLayout {
-                            width: parent.width
-                            spacing: Style.space(4)
-                            Repeater {
-                                model: [
-                                    {
-                                        label: "Navigate",
-                                        value: "navigate"
-                                    },
-                                    {
-                                        label: "Sound",
-                                        value: "sound"
-                                    },
-                                    {
-                                        label: "Media",
-                                        value: "media"
-                                    },
-                                    {
-                                        label: "More",
-                                        value: "tv"
-                                    }
-                                ]
-                                QuietButton {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    text: modelData.label
-                                    selected: root.remotePage === modelData.value
-                                    onClicked: root.remotePage = modelData.value
-                                }
-                            }
-                        }
-
-                        Column {
-                            visible: root.remotePage === "navigate"
-                            width: parent.width
-                            spacing: Style.space(12)
-
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: 222
-                                height: 222
-                                radius: 111
-                                color: root.softFill
-                                GridLayout {
-                                    anchors.centerIn: parent
-                                    columns: 3
-                                    rowSpacing: 7
-                                    columnSpacing: 7
-                                    Item {
-                                        Layout.preferredWidth: 54
-                                        Layout.preferredHeight: 54
-                                    }
-                                    RoundButton {
-                                        iconText: "▲"
-                                        onClicked: root.service.key("KEY_UP")
-                                    }
-                                    Item {
-                                        Layout.preferredWidth: 54
-                                        Layout.preferredHeight: 54
-                                    }
-                                    RoundButton {
-                                        iconText: "◀"
-                                        onClicked: root.service.key("KEY_LEFT")
-                                    }
-                                    Button {
-                                        Layout.preferredWidth: 58
-                                        Layout.preferredHeight: 58
-                                        radius: 29
-                                        text: "OK"
-                                        selected: true
-                                        foreground: root.panelForeground
-                                        accent: Color.accent
-                                        fontFamily: root.uiFont
-                                        fontSize: Style.font.body
-                                        focusable: true
-                                        onClicked: root.service.key("KEY_ENTER")
-                                    }
-                                    RoundButton {
-                                        iconText: "▶"
-                                        onClicked: root.service.key("KEY_RIGHT")
-                                    }
-                                    Item {
-                                        Layout.preferredWidth: 54
-                                        Layout.preferredHeight: 54
-                                    }
-                                    RoundButton {
-                                        iconText: "▼"
-                                        onClicked: root.service.key("KEY_DOWN")
-                                    }
-                                    Item {
-                                        Layout.preferredWidth: 54
-                                        Layout.preferredHeight: 54
-                                    }
-                                }
-                            }
-
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                SoftButton {
-                                    text: "Back"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_RETURN")
-                                }
-                                SoftButton {
-                                    text: "Home"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_HOME")
-                                }
-                            }
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                QuietButton {
-                                    text: "Source"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_SOURCE")
-                                }
-                                QuietButton {
-                                    text: "Rotate display"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.rotate()
-                                }
-                            }
-                        }
-
-                        Column {
-                            visible: root.remotePage === "sound"
-                            width: parent.width
-                            spacing: Style.space(14)
-                            PanelSectionHeader {
-                                text: "VOLUME"
-                                foreground: root.panelForeground
-                                fontFamily: root.uiFont
-                            }
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                SoftButton {
-                                    text: "−"
-                                    Layout.fillWidth: true
-                                    fontSize: Style.font.title
-                                    onClicked: root.service.key("KEY_VOLDOWN")
-                                }
-                                SoftButton {
-                                    text: "Mute"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_MUTE")
-                                }
-                                SoftButton {
-                                    text: "+"
-                                    Layout.fillWidth: true
-                                    fontSize: Style.font.title
-                                    onClicked: root.service.key("KEY_VOLUP")
-                                }
-                            }
-                            PanelSectionHeader {
-                                text: "CHANNEL"
-                                foreground: root.panelForeground
-                                fontFamily: root.uiFont
-                            }
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                SoftButton {
-                                    text: "−"
-                                    Layout.fillWidth: true
-                                    fontSize: Style.font.title
-                                    onClicked: root.service.key("KEY_CHDOWN")
-                                }
-                                SoftButton {
-                                    text: "Guide"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_GUIDE")
-                                }
-                                SoftButton {
-                                    text: "+"
-                                    Layout.fillWidth: true
-                                    fontSize: Style.font.title
-                                    onClicked: root.service.key("KEY_CHUP")
-                                }
-                            }
-                        }
-
-                        Column {
-                            visible: root.remotePage === "media"
-                            width: parent.width
-                            spacing: Style.space(16)
-                            Button {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                width: 104
-                                height: 104
-                                radius: 52
-                                text: "Play / Pause"
-                                selected: true
-                                foreground: root.panelForeground
-                                accent: Color.accent
-                                fontFamily: root.uiFont
-                                fontSize: Style.font.bodySmall
-                                focusable: true
-                                onClicked: root.service.key("KEY_PLAYPAUSE")
-                            }
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                SoftButton {
-                                    text: "Previous"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_PREVIOUS")
-                                }
-                                SoftButton {
-                                    text: "Stop"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_STOP")
-                                }
-                            }
-                            RowLayout {
-                                width: parent.width
-                                spacing: Style.space(8)
-                                QuietButton {
-                                    text: "Rewind"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_REWIND")
-                                }
-                                QuietButton {
-                                    text: "Fast-forward"
-                                    Layout.fillWidth: true
-                                    onClicked: root.service.key("KEY_FF")
-                                }
-                            }
-                        }
-
-                        GridLayout {
-                            visible: root.remotePage === "tv"
-                            width: parent.width
-                            columns: 2
-                            rowSpacing: Style.space(8)
-                            columnSpacing: Style.space(8)
-                            Repeater {
-                                model: [
-                                    {
-                                        t: "Channel list",
-                                        k: "KEY_CH_LIST"
-                                    },
-                                    {
-                                        t: "Info",
-                                        k: "KEY_INFO"
-                                    },
-                                    {
-                                        t: "Menu",
-                                        k: "KEY_MENU"
-                                    },
-                                    {
-                                        t: "Tools",
-                                        k: "KEY_TOOLS"
-                                    },
-                                    {
-                                        t: "Previous channel",
-                                        k: "KEY_PRECH"
-                                    },
-                                    {
-                                        t: "Record",
-                                        k: "KEY_REC"
-                                    },
-                                    {
-                                        t: "Captions",
-                                        k: "KEY_CAPTION"
-                                    },
-                                    {
-                                        t: "Exit",
-                                        k: "KEY_EXIT"
-                                    }
-                                ]
-                                SoftButton {
-                                    required property var modelData
-                                    Layout.fillWidth: true
-                                    text: modelData.t
-                                    onClicked: root.service.key(modelData.k)
-                                }
-                            }
-                        }
                     }
 
-                    Column {
+                    ArtPage {
                         visible: root.page === "art"
-                        width: parent.width
-                        spacing: Style.space(10)
-                        onVisibleChanged: if (visible && root.service && !root.service.galleryLoaded)
-                            root.service.loadGallery()
-                        RowLayout {
-                            width: parent.width
-                            spacing: Style.space(8)
-                            SoftButton {
-                                text: "Enter Art Mode"
-                                Layout.fillWidth: true
-                                onClicked: root.service.key("KEY_AMBIENT")
-                            }
-                            PanelActionButton {
-                                iconText: "↻"
-                                tooltipText: "Refresh artwork"
-                                fontFamily: root.uiFont
-                                foreground: root.panelForeground
-                                size: 42
-                                focusable: true
-                                onClicked: root.service.loadGallery()
-                            }
-                        }
-                        Text {
-                            visible: root.service && !root.service.galleryLoaded
-                            width: parent.width
-                            text: "Loading artwork…"
-                            horizontalAlignment: Text.AlignHCenter
-                            color: root.panelDim
-                            font.family: root.uiFont
-                            font.pixelSize: Style.font.body
-                        }
-                        Text {
-                            visible: root.service && root.service.galleryLoaded && root.service.artGallery.length === 0
-                            width: parent.width
-                            text: "No artwork previews available"
-                            horizontalAlignment: Text.AlignHCenter
-                            color: root.panelDim
-                            font.family: root.uiFont
-                            font.pixelSize: Style.font.body
-                        }
-                        GridLayout {
-                            visible: root.service && root.service.galleryLoaded
-                            columns: 2
-                            width: parent.width
-                            rowSpacing: Style.space(8)
-                            columnSpacing: Style.space(8)
-                            Repeater {
-                                model: root.service ? root.service.artGallery : []
-                                GalleryCard {
-                                    required property var modelData
-                                    item: modelData
-                                    onSelected: id => root.service.selectArt(id)
-                                }
-                            }
-                        }
+                        service: root.service
+                        frameForeground: root.panelForeground
+                        frameDim: root.panelDim
+                        softFill: root.softFill
+                        uiFont: root.uiFont
                     }
 
-                    Column {
+                    PhotosPage {
+                        id: photosPage
                         visible: root.page === "photos"
-                        width: parent.width
-                        spacing: Style.space(10)
-                        onVisibleChanged: if (visible && root.service && !root.service.galleryLoaded)
-                            root.service.loadGallery()
-                        RowLayout {
-                            width: parent.width
-                            spacing: Style.space(8)
-                            SoftButton {
-                                text: photoPicker.running ? "Opening picker…" : "+  Upload photo"
-                                Layout.fillWidth: true
-                                enabled: !photoPicker.running
-                                onClicked: photoPicker.running = true
-                            }
-                            PanelActionButton {
-                                iconText: "↻"
-                                tooltipText: "Refresh photos"
-                                fontFamily: root.uiFont
-                                foreground: root.panelForeground
-                                size: 42
-                                focusable: true
-                                onClicked: root.service.loadGallery()
-                            }
-                        }
-                        QuietButton {
-                            text: (root.slideshowOpen ? "▾  " : "▸  ") + "Slideshow"
-                            width: parent.width
-                            leftAlign: true
-                            onClicked: root.slideshowOpen = !root.slideshowOpen
-                        }
-                        RowLayout {
-                            visible: root.slideshowOpen
-                            width: parent.width
-                            spacing: Style.space(8)
-                            SoftButton {
-                                text: "Shuffle · 5 min"
-                                Layout.fillWidth: true
-                                onClicked: root.service.slideshow(5, true)
-                            }
-                            SoftButton {
-                                text: "15 min"
-                                Layout.fillWidth: true
-                                onClicked: root.service.slideshow(15, false)
-                            }
-                            QuietButton {
-                                text: "Stop"
-                                onClicked: root.service.slideshow(0, false)
-                            }
-                        }
-                        Text {
-                            visible: root.service && !root.service.galleryLoaded
-                            width: parent.width
-                            text: "Loading photos…"
-                            horizontalAlignment: Text.AlignHCenter
-                            color: root.panelDim
-                            font.family: root.uiFont
-                            font.pixelSize: Style.font.body
-                        }
-                        Text {
-                            visible: root.service && root.service.galleryLoaded && root.service.photosGallery.length === 0
-                            width: parent.width
-                            text: "No personal photos yet"
-                            horizontalAlignment: Text.AlignHCenter
-                            color: root.panelDim
-                            font.family: root.uiFont
-                            font.pixelSize: Style.font.body
-                        }
-                        GridLayout {
-                            visible: root.service && root.service.galleryLoaded
-                            columns: 2
-                            width: parent.width
-                            rowSpacing: Style.space(8)
-                            columnSpacing: Style.space(8)
-                            Repeater {
-                                model: root.service ? root.service.photosGallery : []
-                                GalleryCard {
-                                    required property var modelData
-                                    item: modelData
-                                    deletable: true
-                                    onSelected: id => root.service.selectArt(id)
-                                    onDeleteRequested: id => root.pendingDeleteID = id
-                                }
-                            }
-                        }
+                        service: root.service
+                        frameForeground: root.panelForeground
+                        frameDim: root.panelDim
+                        softFill: root.softFill
+                        uiFont: root.uiFont
+                        pickerRunning: photoPicker.running
+                        onUploadRequested: photoPicker.running = true
+                        onDeleteRequested: id => root.pendingDeleteID = id
                     }
 
-                    Column {
+                    SetupPage {
+                        id: setupPage
                         visible: root.page === "setup"
-                        width: parent.width
-                        spacing: Style.space(10)
-                        PanelSectionHeader {
-                            text: "TV CONNECTION"
-                            foreground: root.panelForeground
-                            fontFamily: root.uiFont
-                        }
-                        SoftButton {
-                            text: "Find nearby TVs"
-                            width: parent.width
-                            onClicked: root.service.discover()
-                        }
-                        Repeater {
-                            model: root.service ? root.service.devices : []
-                            SoftButton {
-                                required property var modelData
-                                width: parent.width
-                                text: String(modelData.name || modelData.model || modelData.ip)
-                                onClicked: root.service.configure(String(modelData.ip))
-                            }
-                        }
-                        QuietButton {
-                            text: (root.manualSetupOpen ? "▾  " : "▸  ") + "Enter address manually"
-                            width: parent.width
-                            leftAlign: true
-                            onClicked: root.manualSetupOpen = !root.manualSetupOpen
-                        }
-                        Column {
-                            visible: root.manualSetupOpen
-                            width: parent.width
-                            spacing: Style.space(8)
-                            TextField {
-                                id: ipField
-                                width: parent.width
-                                placeholderText: "TV IP address"
-                                inputMethodHints: Qt.ImhFormattedNumbersOnly
-                                font.family: root.uiFont
-                            }
-                            SoftButton {
-                                text: "Save address"
-                                width: parent.width
-                                enabled: ipField.text.trim() !== ""
-                                onClicked: root.service.configure(ipField.text)
-                            }
-                        }
-                        PanelSeparator {
-                            width: parent.width
-                            foreground: root.panelForeground
-                        }
-                        PanelSectionHeader {
-                            text: "ROTATING STAND"
-                            foreground: root.panelForeground
-                            fontFamily: root.uiFont
-                        }
-                        Text {
-                            width: parent.width
-                            text: "Pair the stand once with a compatible Samsung Smart Remote. Rotation then works from Navigate."
-                            wrapMode: Text.Wrap
-                            color: root.panelDim
-                            font.family: root.uiFont
-                            font.pixelSize: Style.font.bodySmall
-                        }
-                        QuietButton {
-                            text: (root.setupCapabilitiesOpen ? "▾  " : "▸  ") + "Technical capabilities"
-                            width: parent.width
-                            leftAlign: true
-                            onClicked: root.setupCapabilitiesOpen = !root.setupCapabilitiesOpen
-                        }
-                        Column {
-                            visible: root.setupCapabilitiesOpen
-                            width: parent.width
-                            spacing: Style.space(9)
-                            Repeater {
-                                model: root.service ? root.service.capabilities : []
-                                Column {
-                                    required property var modelData
-                                    width: parent.width
-                                    spacing: 2
-                                    Text {
-                                        text: String(parent.modelData.group || "")
-                                        font.bold: true
-                                        font.family: root.uiFont
-                                        font.pixelSize: Style.font.bodySmall
-                                        color: root.panelForeground
-                                    }
-                                    Text {
-                                        text: String(parent.modelData.items || "")
-                                        width: parent.width
-                                        wrapMode: Text.Wrap
-                                        font.family: root.uiFont
-                                        font.pixelSize: Style.font.caption
-                                        color: root.panelDim
-                                    }
-                                }
-                            }
-                        }
+                        service: root.service
+                        frameForeground: root.panelForeground
+                        frameDim: root.panelDim
+                        softFill: root.softFill
+                        uiFont: root.uiFont
                     }
                 }
             }

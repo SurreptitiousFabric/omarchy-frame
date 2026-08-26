@@ -1,13 +1,21 @@
 package frame
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 )
 
 func TestConfigRoundTripAndPermissions(t *testing.T) {
@@ -46,8 +54,80 @@ func TestCapabilityGroupsAndKeys(t *testing.T) {
 	if len(capabilities()) < 8 {
 		t.Fatal("missing documented capability groups")
 	}
-	if !safeKey.MatchString("KEY_MULTI_VIEW") || safeKey.MatchString("KEY_HOME;rm") {
-		t.Fatal("key validation failed")
+	for _, key := range []string{"KEY_HOME", "KEY_POWER", "KEY_PLAYPAUSE"} {
+		if !safeRemoteKey(key, "click") {
+			t.Fatalf("safe click key %q was rejected", key)
+		}
+	}
+	for _, key := range []string{"KEY_MULTI_VIEW", "KEY_POWER"} {
+		if !safeRemoteKey(key, "hold") {
+			t.Fatalf("safe hold key %q was rejected", key)
+		}
+	}
+	for _, key := range []string{"KEY_FACTORY", "KEY_RESET", "KEY_SERVICE", "KEY_HOME;rm", "KEY_UNKNOWN"} {
+		if safeRemoteKey(key, "click") || safeRemoteKey(key, "hold") {
+			t.Fatalf("unsafe key %q was accepted", key)
+		}
+	}
+	if safeRemoteKey("KEY_HOME", "hold") || safeRemoteKey("KEY_POWER", "release") {
+		t.Fatal("unsafe key action was accepted")
+	}
+}
+
+func TestQMLRemoteKeysMatchBackendAllowlist(t *testing.T) {
+	keyPattern := regexp.MustCompile(`KEY_[A-Z0-9_]+`)
+	used := map[string]bool{}
+	names := []string{"../../BarWidget.qml", "../../Service.qml"}
+	components, err := filepath.Glob("../../components/*.qml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	names = append(names, components...)
+	for _, name := range names {
+		body, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range keyPattern.FindAllString(string(body), -1) {
+			used[key] = true
+			if !safeRemoteKey(key, "click") && !safeRemoteKey(key, "hold") {
+				t.Fatalf("QML uses key %q outside backend allowlists", key)
+			}
+		}
+	}
+	for key := range safeClickKeys {
+		if !used[key] {
+			t.Fatalf("backend permits unused click key %q", key)
+		}
+	}
+}
+
+func TestHeldKeyAlwaysAttemptsRelease(t *testing.T) {
+	var actions []string
+	failedRelease := true
+	err := sendHeldKey(func(action string) error {
+		actions = append(actions, action)
+		if action == "Release" && failedRelease {
+			failedRelease = false
+			return errors.New("temporary release failure")
+		}
+		return nil
+	}, 3*time.Second, func(duration time.Duration) {
+		if duration != 3*time.Second {
+			t.Fatalf("unexpected hold duration %v", duration)
+		}
+	})
+	if err != nil || strings.Join(actions, ",") != "Press,Release,Release" {
+		t.Fatalf("actions=%v err=%v", actions, err)
+	}
+
+	actions = nil
+	err = sendHeldKey(func(action string) error {
+		actions = append(actions, action)
+		return errors.New("press failed")
+	}, time.Second, func(time.Duration) { t.Fatal("waited after failed press") })
+	if err == nil || strings.Join(actions, ",") != "Press" {
+		t.Fatalf("actions=%v err=%v", actions, err)
 	}
 }
 
@@ -55,6 +135,33 @@ func TestPublicConfigNeverContainsToken(t *testing.T) {
 	p := Config{IP: "192.168.1.2", Token: "secret", Name: "Frame"}.public()
 	if _, exists := p["token"]; exists {
 		t.Fatal("public config exposed token")
+	}
+}
+
+func TestGetInfoWithClientValidatesResponses(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ok", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"device":{"name":"Frame","modelName":"QE55LS03B"},"version":"2.0"}`))
+	})
+	mux.HandleFunc("/bad-status", func(w http.ResponseWriter, _ *http.Request) { http.Error(w, "no", http.StatusForbidden) })
+	mux.HandleFunc("/bad-json", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("{")) })
+	mux.HandleFunc("/large", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte(strings.Repeat(" ", (1<<20)+1))) })
+	mux.HandleFunc("/redirect", func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/ok", http.StatusFound) })
+	server := httptest.NewServer(mux)
+	defer server.Close()
+	client := lanHTTPClient(time.Second)
+
+	got, err := getInfoWithClient("192.168.1.8", server.URL+"/ok", client)
+	if err != nil || got.Device.Name != "Frame" || got.Device.ModelName != "QE55LS03B" {
+		t.Fatalf("got=%#v err=%v", got, err)
+	}
+	for _, path := range []string{"/bad-status", "/bad-json", "/large", "/redirect"} {
+		if _, err := getInfoWithClient("192.168.1.8", server.URL+path, client); err == nil {
+			t.Fatalf("accepted %s response", path)
+		}
+	}
+	if _, err := getInfoWithClient("127.0.0.1", server.URL+"/ok", client); err == nil {
+		t.Fatal("accepted loopback TV address")
 	}
 }
 
@@ -73,12 +180,64 @@ func TestCommandValidationDoesNotTouchNetwork(t *testing.T) {
 	}
 }
 
+func TestConfigureValidationCanRecoverFromMalformedConfig(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "config.json")
+	t.Setenv("OMARCHY_FRAME_CONFIG", p)
+	if err := os.WriteFile(p, []byte("{"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Run([]string{"configure", "not-an-ip"})
+	if err == nil || !strings.Contains(err.Error(), "private or link-local") {
+		t.Fatalf("configure was blocked by malformed config: %v", err)
+	}
+}
+
+func TestConcurrentConfigWritesRemainValid(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "state", "config.json")
+	t.Setenv("OMARCHY_FRAME_CONFIG", p)
+	const writers = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, writers)
+	for i := 1; i <= writers; i++ {
+		wg.Add(1)
+		go func(lastOctet int) {
+			defer wg.Done()
+			errs <- saveConfig(Config{IP: fmt.Sprintf("192.168.44.%d", lastOctet), Name: fmt.Sprintf("Frame %d", lastOctet)})
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := loadConfig()
+	if err != nil || !strings.HasPrefix(got.IP, "192.168.44.") {
+		t.Fatalf("invalid final config %#v: %v", got, err)
+	}
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(p), ".config-*.tmp"))
+	if err != nil || len(matches) != 0 {
+		t.Fatalf("temporary files remain: %v, %v", matches, err)
+	}
+}
+
 func TestConfiguredCommandArgumentValidation(t *testing.T) {
 	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(t.TempDir(), "config.json"))
 	if err := saveConfig(Config{IP: "192.168.9.9"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"key"}, {"hold"}, {"art"}, {"select-art"}, {"select-art", "../bad"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"}, {"art", "set_artmode_status"}, {"unknown"}} {
+	for _, args := range [][]string{
+		{"key"}, {"key", "KEY_FACTORY"},
+		{"hold"}, {"hold", "KEY_HOME", "100"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"},
+		{"wake"},
+		{"art"}, {"art", "set_artmode_status"}, {"art", "get_content_list"}, {"art", "get_artmode_status", "unexpected"},
+		{"select-art"}, {"select-art", "../bad"},
+		{"upload-art"}, {"upload-art", "relative.jpg"},
+		{"delete-art"}, {"delete-art", "../bad"},
+		{"slideshow"}, {"slideshow", "bad", "sequential"}, {"slideshow", "1441", "shuffle"}, {"slideshow", "5", "random"},
+		{"unknown"},
+	} {
 		if _, err := Run(args); err == nil {
 			t.Fatalf("expected validation error for %v", args)
 		}
@@ -158,6 +317,47 @@ func TestArtRequestAllowlist(t *testing.T) {
 	}
 }
 
+func TestArtRequestWrapperEndToEnd(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	done := make(chan error, 1)
+	go func() {
+		_, payload := readClientFrame(t, bufio.NewReader(server))
+		var envelope map[string]any
+		if err := json.Unmarshal(payload, &envelope); err != nil {
+			done <- err
+			return
+		}
+		params, _ := envelope["params"].(map[string]any)
+		raw, _ := params["data"].(string)
+		var request map[string]any
+		if err := json.Unmarshal([]byte(raw), &request); err != nil {
+			done <- err
+			return
+		}
+		requestID, _ := request["request_id"].(string)
+		response, _ := json.Marshal(map[string]any{"request_id": requestID, "event": "get_artmode_status", "value": "on"})
+		responseEnvelope, _ := json.Marshal(map[string]any{"data": string(response)})
+		_, err := server.Write(serverFrame(1, responseEnvelope))
+		done <- err
+	}()
+	connectArt := func(_ *Config, channel string, timeout time.Duration) (*wsConn, error) {
+		if channel != "com.samsung.art-app" || timeout != 2*time.Second {
+			t.Fatalf("channel=%q timeout=%v", channel, timeout)
+		}
+		return w, nil
+	}
+	result, err := artRequestWithConnector(&Config{}, "get_artmode_status", nil, 2*time.Second, time.Second, connectArt)
+	if err != nil || artModeFromResult(result) != "art" {
+		t.Fatalf("result=%#v err=%v", result, err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestArtRequestID(t *testing.T) {
 	a, err := artRequestID()
 	if err != nil {
@@ -231,8 +431,42 @@ func TestFrameStatusModesAndFallback(t *testing.T) {
 		artCalled = true
 		return nil, nil
 	})
-	if offline["online"] != false || offline["mode"] != "off" || artCalled {
+	if offline["online"] != false || offline["mode"] != "offline" || artCalled {
 		t.Fatalf("unexpected offline status %#v, artCalled=%v", offline, artCalled)
+	}
+}
+
+func TestMatchingArtResponse(t *testing.T) {
+	envelope := func(data any) []byte {
+		b, err := json.Marshal(map[string]any{"event": "art_app_response", "data": data})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b
+	}
+	inner := func(values map[string]any) string {
+		b, err := json.Marshal(values)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+
+	if _, matched, err := matchingArtResponse([]byte(`{"event":"ms.channel.ready"}`), "wanted"); err != nil || matched {
+		t.Fatalf("ready event matched: matched=%v err=%v", matched, err)
+	}
+	if _, matched, err := matchingArtResponse(envelope(inner(map[string]any{"event": "art_mode_changed", "value": "on"})), "wanted"); err != nil || matched {
+		t.Fatalf("unsolicited event matched: matched=%v err=%v", matched, err)
+	}
+	if _, matched, err := matchingArtResponse(envelope(inner(map[string]any{"request_id": "other", "value": "on"})), "wanted"); err != nil || matched {
+		t.Fatalf("wrong request matched: matched=%v err=%v", matched, err)
+	}
+	got, matched, err := matchingArtResponse(envelope(inner(map[string]any{"request_id": "wanted", "value": "on"})), "wanted")
+	if err != nil || !matched || got["value"] != "on" {
+		t.Fatalf("matching response failed: got=%v matched=%v err=%v", got, matched, err)
+	}
+	if _, matched, err = matchingArtResponse(envelope(inner(map[string]any{"id": "wanted", "event": "error", "error_code": "denied"})), "wanted"); err == nil || !matched {
+		t.Fatalf("matching error was not returned: matched=%v err=%v", matched, err)
 	}
 }
 

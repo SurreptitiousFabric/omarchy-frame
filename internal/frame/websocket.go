@@ -22,6 +22,8 @@ type wsConn struct {
 	r *bufio.Reader
 }
 
+const maxWSMessageSize = 8 << 20
+
 func dialWS(raw string, timeout time.Duration) (*wsConn, error) {
 	u, err := url.Parse(raw)
 	if err != nil {
@@ -88,11 +90,18 @@ func dialWS(raw string, timeout time.Duration) (*wsConn, error) {
 }
 
 func (w *wsConn) writeText(payload []byte) error {
+	if len(payload) > maxWSMessageSize {
+		return errors.New("WebSocket message too large")
+	}
+	return w.writeMaskedFrame(0x1, payload)
+}
+
+func (w *wsConn) writeMaskedFrame(op byte, payload []byte) error {
 	mask := make([]byte, 4)
 	if _, err := rand.Read(mask); err != nil {
 		return err
 	}
-	h := []byte{0x81}
+	h := []byte{0x80 | op}
 	n := len(payload)
 	switch {
 	case n < 126:
@@ -110,79 +119,114 @@ func (w *wsConn) writeText(payload []byte) error {
 	for i := range payload {
 		data[i] = payload[i] ^ mask[i%4]
 	}
-	_, err := w.Write(append(h, data...))
-	return err
+	return writeAll(w, append(h, data...))
+}
+
+func writeAll(w io.Writer, p []byte) error {
+	for len(p) > 0 {
+		n, err := w.Write(p)
+		if err != nil {
+			return err
+		}
+		if n <= 0 || n > len(p) {
+			return io.ErrUnexpectedEOF
+		}
+		p = p[n:]
+	}
+	return nil
 }
 
 func (w *wsConn) readText(timeout time.Duration) ([]byte, error) {
 	_ = w.SetReadDeadline(time.Now().Add(timeout))
+	var message []byte
+	fragmented := false
 	for {
-		a, err := w.r.ReadByte()
+		fin, op, p, err := w.readFrame()
 		if err != nil {
 			return nil, err
 		}
-		b, err := w.r.ReadByte()
-		if err != nil {
-			return nil, err
-		}
-		op := a & 0x0f
-		n := uint64(b & 0x7f)
-		if n == 126 {
-			var x uint16
-			if err = binary.Read(w.r, binary.BigEndian, &x); err != nil {
-				return nil, err
+		switch op {
+		case 0x0:
+			if !fragmented {
+				return nil, errors.New("unexpected WebSocket continuation frame")
 			}
-			n = uint64(x)
-		} else if n == 127 {
-			if err = binary.Read(w.r, binary.BigEndian, &n); err != nil {
-				return nil, err
+			if len(message)+len(p) > maxWSMessageSize {
+				return nil, errors.New("WebSocket message too large")
 			}
-		}
-		var mask []byte
-		if b&0x80 != 0 {
-			mask = make([]byte, 4)
-			if _, err = io.ReadFull(w.r, mask); err != nil {
-				return nil, err
+			message = append(message, p...)
+			if fin {
+				return bytes.TrimSpace(message), nil
 			}
-		}
-		if n > 8<<20 {
-			return nil, errors.New("WebSocket frame too large")
-		}
-		p := make([]byte, n)
-		if _, err = io.ReadFull(w.r, p); err != nil {
-			return nil, err
-		}
-		for i := range p {
-			if len(mask) > 0 {
-				p[i] ^= mask[i%4]
+		case 0x1:
+			if fragmented {
+				return nil, errors.New("new WebSocket message before final continuation")
 			}
-		}
-		if op == 0x8 {
+			if fin {
+				return bytes.TrimSpace(p), nil
+			}
+			message = append(message[:0], p...)
+			fragmented = true
+		case 0x2:
+			return nil, errors.New("unsupported WebSocket binary message")
+		case 0x8:
 			return nil, io.EOF
-		}
-		if op == 0x9 {
-			_ = w.writeControl(0xA, p)
+		case 0x9:
+			if err := w.writeControl(0xA, p); err != nil {
+				return nil, err
+			}
+		case 0xA:
 			continue
-		}
-		if op == 0x1 {
-			return bytes.TrimSpace(p), nil
+		default:
+			return nil, errors.New("unsupported WebSocket frame")
 		}
 	}
 }
 
+func (w *wsConn) readFrame() (bool, byte, []byte, error) {
+	a, err := w.r.ReadByte()
+	if err != nil {
+		return false, 0, nil, err
+	}
+	b, err := w.r.ReadByte()
+	if err != nil {
+		return false, 0, nil, err
+	}
+	if a&0x70 != 0 {
+		return false, 0, nil, errors.New("unsupported WebSocket extension bits")
+	}
+	if b&0x80 != 0 {
+		return false, 0, nil, errors.New("masked WebSocket server frame")
+	}
+	fin := a&0x80 != 0
+	op := a & 0x0f
+	n := uint64(b & 0x7f)
+	if n == 126 {
+		var x uint16
+		if err = binary.Read(w.r, binary.BigEndian, &x); err != nil {
+			return false, 0, nil, err
+		}
+		n = uint64(x)
+	} else if n == 127 {
+		if err = binary.Read(w.r, binary.BigEndian, &n); err != nil {
+			return false, 0, nil, err
+		}
+	}
+	if n > maxWSMessageSize {
+		return false, 0, nil, errors.New("WebSocket frame too large")
+	}
+	if op >= 0x8 && (!fin || n > 125) {
+		return false, 0, nil, errors.New("invalid WebSocket control frame")
+	}
+	p := make([]byte, n)
+	if _, err = io.ReadFull(w.r, p); err != nil {
+		return false, 0, nil, err
+	}
+	return fin, op, p, nil
+}
+
 func (w *wsConn) writeControl(op byte, p []byte) error {
 	if len(p) > 125 {
-		p = p[:125]
+		return errors.New("WebSocket control payload too large")
 	}
-	mask := make([]byte, 4)
-	if _, err := rand.Read(mask); err != nil {
-		return err
-	}
-	h := []byte{0x80 | op, 0x80 | byte(len(p))}
-	h = append(h, mask...)
-	for i := range p {
-		p[i] ^= mask[i%4]
-	}
-	_, e := w.Write(append(h, p...))
-	return e
+	return w.writeMaskedFrame(op, p)
 }

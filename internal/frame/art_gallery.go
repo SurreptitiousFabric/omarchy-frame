@@ -2,21 +2,27 @@ package frame
 
 import (
 	"bufio"
-	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/tls"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
+)
+
+const (
+	maxThumbnailBatchBytes = int64(64 << 20)
+	maxThumbnailCacheBytes = int64(64 << 20)
+	maxThumbnailCacheFiles = 200
+	maxThumbnailCacheAge   = 30 * 24 * time.Hour
 )
 
 type artItem struct {
@@ -28,11 +34,19 @@ type artItem struct {
 	Height      int    `json:"height"`
 }
 
+type artRequestFunc func(*Config, string, []string) (map[string]any, error)
+type artCommandFunc func(*Config, map[string]any) (map[string]any, error)
+type thumbnailFetchFunc func(*Config, []string) (map[string]string, error)
+
 func artGallery(c *Config) (map[string]any, error) {
+	return artGalleryWith(c, artRequest, fetchArtThumbnails)
+}
+
+func artGalleryWith(c *Config, request artRequestFunc, thumbnails thumbnailFetchFunc) (map[string]any, error) {
 	var items []artItem
 	var lastErr error
 	for _, category := range []string{"MY-C0008", "MY-C0002"} {
-		listed, err := artRequest(c, "get_content_list", []string{category})
+		listed, err := request(c, "get_content_list", []string{category})
 		if err != nil {
 			lastErr = err
 			continue
@@ -54,7 +68,7 @@ func artGallery(c *Config) (map[string]any, error) {
 	}
 	items = uniqueArtItems(items)
 	currentID := ""
-	if current, e := artRequest(c, "get_current_artwork", nil); e == nil {
+	if current, e := request(c, "get_current_artwork", nil); e == nil {
 		if x, ok := current["art"].(map[string]any); ok {
 			currentID, _ = x["content_id"].(string)
 		}
@@ -65,7 +79,7 @@ func artGallery(c *Config) (map[string]any, error) {
 			ids = append(ids, item.ContentID)
 		}
 	}
-	images, err := fetchArtThumbnails(c, ids)
+	images, err := thumbnails(c, ids)
 	if err != nil {
 		return nil, err
 	}
@@ -100,10 +114,14 @@ func selectArt(c *Config, id string) (map[string]any, error) {
 }
 
 func deleteArt(c *Config, id string) (map[string]any, error) {
+	return deleteArtWith(c, id, artRequest, artCommand)
+}
+
+func deleteArtWith(c *Config, id string, request artRequestFunc, command artCommandFunc) (map[string]any, error) {
 	if !safeArtID.MatchString(id) {
 		return nil, errors.New("invalid artwork id")
 	}
-	listed, err := artRequest(c, "get_content_list", []string{"MY-C0002"})
+	listed, err := request(c, "get_content_list", []string{"MY-C0002"})
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +131,7 @@ func deleteArt(c *Config, id string) (map[string]any, error) {
 	if json.Unmarshal([]byte(raw), &items) != nil || !containsArtID(items, id) {
 		return nil, errors.New("only photos in My Photos can be deleted")
 	}
-	if _, err = artCommand(c, map[string]any{"request": "delete_image_list", "content_id_list": []map[string]string{{"content_id": id}}}); err != nil {
+	if _, err = command(c, map[string]any{"request": "delete_image_list", "content_id_list": []map[string]string{{"content_id": id}}}); err != nil {
 		return nil, err
 	}
 	return map[string]any{"ok": true, "message": "Photo deleted from the TV", "deleted_id": id}, nil
@@ -139,44 +157,76 @@ func artCommand(c *Config, data map[string]any) (map[string]any, error) {
 		return nil, err
 	}
 	defer w.Close()
-	inner, _ := json.Marshal(data)
-	outer, _ := json.Marshal(map[string]any{"method": "ms.channel.emit", "params": map[string]any{"event": "art_app_request", "to": "host", "data": string(inner)}})
-	if err = w.writeText(outer); err != nil {
+	if err = sendArtRequest(w, data); err != nil {
 		return nil, err
 	}
-	for i := 0; i < 10; i++ {
-		b, e := w.readText(5 * time.Second)
-		if e != nil {
-			return nil, e
+	x, err := waitMatchingArtResponse(w, id, 10, 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{"ok": true, "art": x}, nil
+}
+
+func sendArtRequest(w *wsConn, data map[string]any) error {
+	inner, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	outer, err := json.Marshal(map[string]any{"method": "ms.channel.emit", "params": map[string]any{"event": "art_app_request", "to": "host", "data": string(inner)}})
+	if err != nil {
+		return err
+	}
+	return w.writeText(outer)
+}
+
+func waitMatchingArtResponse(w *wsConn, requestID string, attempts int, timeout time.Duration) (map[string]any, error) {
+	for i := 0; i < attempts; i++ {
+		message, err := w.readText(timeout)
+		if err != nil {
+			return nil, err
 		}
-		var p map[string]any
-		if json.Unmarshal(b, &p) != nil {
-			continue
+		response, matched, err := matchingArtResponse(message, requestID)
+		if err != nil {
+			return nil, err
 		}
-		raw, ok := p["data"].(string)
-		if !ok {
-			continue
+		if matched {
+			return response, nil
 		}
-		var x map[string]any
-		if json.Unmarshal([]byte(raw), &x) != nil {
-			continue
-		}
-		got, _ := x["request_id"].(string)
-		if got == "" {
-			got, _ = x["id"].(string)
-		}
-		if got != id {
-			continue
-		}
-		if x["event"] == "error" {
-			return nil, fmt.Errorf("Art request failed: %v", x["error_code"])
-		}
-		return map[string]any{"ok": true, "art": x}, nil
 	}
 	return nil, errors.New("Art API returned no matching response")
 }
 
+func matchingArtResponse(message []byte, requestID string) (map[string]any, bool, error) {
+	var envelope map[string]any
+	if json.Unmarshal(message, &envelope) != nil {
+		return nil, false, nil
+	}
+	raw, ok := envelope["data"].(string)
+	if !ok {
+		return nil, false, nil
+	}
+	var response map[string]any
+	if json.Unmarshal([]byte(raw), &response) != nil {
+		return nil, false, nil
+	}
+	got, _ := response["request_id"].(string)
+	if got == "" {
+		got, _ = response["id"].(string)
+	}
+	if got != requestID {
+		return nil, false, nil
+	}
+	if response["event"] == "error" {
+		return nil, true, fmt.Errorf("Art request failed: %v", response["error_code"])
+	}
+	return response, true, nil
+}
+
 func fetchArtThumbnails(c *Config, ids []string) (map[string]string, error) {
+	return fetchArtThumbnailsWith(c, ids, artCommand)
+}
+
+func fetchArtThumbnailsWith(c *Config, ids []string, command artCommandFunc) (map[string]string, error) {
 	req := make([]map[string]string, 0, len(ids))
 	for _, id := range ids {
 		req = append(req, map[string]string{"content_id": id})
@@ -189,35 +239,17 @@ func fetchArtThumbnails(c *Config, ids []string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := artCommand(c, map[string]any{"request": "get_thumbnail_list", "content_id_list": req, "conn_info": map[string]any{"d2d_mode": "socket", "connection_id": binary.BigEndian.Uint32(n[:]), "id": d2d}})
+	res, err := command(c, map[string]any{"request": "get_thumbnail_list", "content_id_list": req, "conn_info": map[string]any{"d2d_mode": "socket", "connection_id": binary.BigEndian.Uint32(n[:]), "id": d2d}})
 	if err != nil {
 		return nil, err
 	}
 	art, _ := res["art"].(map[string]any)
-	ci, _ := art["conn_info"].(map[string]any)
-	if ci == nil {
-		if raw, ok := art["conn_info"].(string); ok {
-			_ = json.Unmarshal([]byte(raw), &ci)
-		}
+	ci, err := connectionInfo(art)
+	if err != nil {
+		return nil, err
 	}
-	ip, _ := ci["ip"].(string)
-	port := portNumber(ci["port"])
 	secured := boolValue(ci["secured"])
-	endpointIP := net.ParseIP(ip)
-	if endpointIP != nil && endpointIP.IsUnspecified() {
-		ip = c.IP
-		endpointIP = net.ParseIP(ip)
-	}
-	if endpointIP == nil || !endpointIP.Equal(net.ParseIP(c.IP)) || port < 1 || port > 65535 {
-		return nil, errors.New("TV returned an unsafe thumbnail endpoint")
-	}
-	d := net.Dialer{Timeout: 5 * time.Second}
-	var conn net.Conn
-	if secured {
-		conn, err = tls.DialWithDialer(&d, "tcp", net.JoinHostPort(ip, strconv.Itoa(port)), &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12})
-	} else {
-		conn, err = d.DialContext(context.Background(), "tcp", net.JoinHostPort(ip, strconv.Itoa(port)))
-	}
+	conn, err := dialTVEndpoint(c, ci, 5*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnail connection (TLS=%t): %w", secured, err)
 	}
@@ -232,8 +264,16 @@ func fetchArtThumbnails(c *Config, ids []string) (map[string]string, error) {
 		expected[id] = true
 	}
 	images, err := receiveThumbnails(bufio.NewReader(conn), dir, expected)
+	keep := make(map[string]bool, len(images))
+	for _, path := range images {
+		keep[path] = true
+	}
+	pruneErr := pruneThumbnailCache(dir, keep, maxThumbnailCacheBytes, maxThumbnailCacheFiles, maxThumbnailCacheAge)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnail stream (TLS=%t): %w", secured, err)
+	}
+	if pruneErr != nil {
+		return nil, fmt.Errorf("thumbnail cache cleanup: %w", pruneErr)
 	}
 	return images, nil
 }
@@ -262,8 +302,13 @@ func boolValue(v any) bool {
 }
 
 func receiveThumbnails(r io.Reader, dir string, expected map[string]bool) (map[string]string, error) {
+	return receiveThumbnailsWithLimit(r, dir, expected, maxThumbnailBatchBytes)
+}
+
+func receiveThumbnailsWithLimit(r io.Reader, dir string, expected map[string]bool, maxBatchBytes int64) (map[string]string, error) {
 	out := map[string]string{}
 	total := 1
+	var batchBytes int64
 	for i := 0; i < total; i++ {
 		var hl uint32
 		if err := binary.Read(r, binary.BigEndian, &hl); err != nil {
@@ -290,6 +335,10 @@ func receiveThumbnails(r io.Reader, dir string, expected map[string]bool) (map[s
 		if !expected[fileID] || fileLength < 1 || fileLength > 8<<20 || fileTotal < 1 || fileTotal > 100 {
 			return nil, errors.New("unsafe thumbnail metadata")
 		}
+		batchBytes += int64(fileLength)
+		if batchBytes > maxBatchBytes {
+			return nil, errors.New("thumbnail batch too large")
+		}
 		total = fileTotal
 		b := make([]byte, fileLength)
 		if _, err := io.ReadFull(r, b); err != nil {
@@ -298,18 +347,97 @@ func receiveThumbnails(r io.Reader, dir string, expected map[string]bool) (map[s
 		if !validThumbnail(fileType, b) {
 			return nil, errors.New("invalid thumbnail image")
 		}
-		sum := sha256.Sum256([]byte(fileID))
 		ext := ".jpg"
 		if fileType == "png" {
 			ext = ".png"
 		}
-		p := filepath.Join(dir, hex.EncodeToString(sum[:])+ext)
+		p := thumbnailCachePath(dir, fileID, ext)
 		if err := os.WriteFile(p, b, 0600); err != nil {
 			return nil, err
 		}
 		out[fileID] = p
 	}
 	return out, nil
+}
+
+func thumbnailCachePath(dir, fileID, ext string) string {
+	sum := sha256.Sum256([]byte(fileID))
+	return filepath.Join(dir, hex.EncodeToString(sum[:])+ext)
+}
+
+type thumbnailCacheFile struct {
+	path     string
+	size     int64
+	modified time.Time
+}
+
+func pruneThumbnailCache(dir string, keep map[string]bool, maxBytes int64, maxFiles int, maxAge time.Duration) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	var current []thumbnailCacheFile
+	var candidates []thumbnailCacheFile
+	var firstErr error
+	remove := func(path string) {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) && firstErr == nil {
+			firstErr = err
+		}
+	}
+	for _, entry := range entries {
+		if !validThumbnailCacheName(entry.Name()) {
+			continue
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			if firstErr == nil {
+				firstErr = infoErr
+			}
+			continue
+		}
+		if !info.Mode().IsRegular() {
+			continue
+		}
+		file := thumbnailCacheFile{path: filepath.Join(dir, entry.Name()), size: info.Size(), modified: info.ModTime()}
+		if keep[file.path] {
+			current = append(current, file)
+			continue
+		}
+		if maxAge > 0 && now.Sub(file.modified) > maxAge {
+			remove(file.path)
+			continue
+		}
+		candidates = append(candidates, file)
+	}
+	sort.Slice(candidates, func(i, j int) bool { return candidates[i].modified.After(candidates[j].modified) })
+	count := len(current)
+	var totalBytes int64
+	for _, file := range current {
+		totalBytes += file.size
+	}
+	for _, file := range candidates {
+		if count+1 > maxFiles || totalBytes+file.size > maxBytes {
+			remove(file.path)
+			continue
+		}
+		count++
+		totalBytes += file.size
+	}
+	return firstErr
+}
+
+func validThumbnailCacheName(name string) bool {
+	ext := filepath.Ext(name)
+	if ext != ".jpg" && ext != ".png" {
+		return false
+	}
+	base := strings.TrimSuffix(name, ext)
+	if len(base) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(base)
+	return err == nil
 }
 
 func validThumbnail(kind string, b []byte) bool {

@@ -6,15 +6,17 @@ The computer and TV must be on the same trusted LAN. On first use the TV shows
 an approval dialog for **Omarchy Frame**; choose Allow. The plugin does not use
 Samsung Cloud or require a Samsung account.
 
-Open the TV icon in the Omarchy bar. The header shows **TV**, **ART**, **OFF**,
-or **ART / TV?**. The last label means the TV is reachable but its firmware did
-not provide a trustworthy Art Mode answer; it does not mean the TV is off.
+Open the TV icon in the Omarchy bar. The header shows **TV**, **ART**,
+**OFFLINE**, or **ART / TV?**. **OFFLINE** means the TV could not be reached; it
+may be fully off, asleep, isolated from Wi-Fi, or using a different address.
+**ART / TV?** means the TV is reachable but its firmware did not provide a
+trustworthy Art Mode answer.
 Middle-click the bar icon or press the refresh button to recheck. The status is
 refreshed every 15 seconds while the panel is open by default.
 
 ## Setup
 
-1. Open **Setup** and choose **Discover Frame TVs**.
+1. Open **Setup** and choose **Find nearby TVs**.
 2. If one Frame is found it is selected automatically. Otherwise select the TV
    or enter its numeric private IP address.
 3. Send a harmless command such as Info and approve the on-TV prompt.
@@ -29,8 +31,8 @@ it as a credential.
 - **Remote:** choose Navigate, Sound, Media, or More. Only that task's controls
   are shown. Navigate opens by default whenever the panel is reopened, and
   short pages shrink so the panel does not leave a large empty area.
-- **Art:** enter Art Mode, browse artwork previews, and select artwork. Entries
-  without a usable TV-provided preview are omitted.
+- **Art:** use **TV / Art** to switch modes, browse artwork previews, and select
+  artwork. Entries without a usable TV-provided preview are omitted.
 - **Photos:** upload a local JPEG/PNG into **My Photos**, select personal
   photos, control the My Photos slideshow, or delete a photo after a separate
   confirmation. Samsung/store artwork cannot be deleted by the plugin.
@@ -38,6 +40,11 @@ it as a credential.
   failure cannot terminate the Omarchy shell.
 - **Setup:** discovery, manual address, approval, and stand instructions.
 - **Technical capabilities:** expandable under Setup.
+
+The header **Off** action performs a deliberate three-second power hold. It is
+different from the short **TV / Art** toggle on the Art page. If a photo reaches
+the TV but Samsung refuses to display it immediately, the app reports
+**Photo uploaded; select it from My Photos** instead of claiming it was selected.
 
 ## Auto Rotating Stand
 
@@ -60,7 +67,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 |---|---|---|
 | No TV discovered | SSDP/mDNS blocked or TV on another LAN | Enter its private IP; check Wi-Fi isolation |
 | Approval never appears | Existing authorization or network block | Remove old authorized device on TV, then retry |
-| TV offline | TV asleep or address changed | Use Wake; rediscover; reserve its address |
+| Header says OFFLINE | TV is unreachable; it may be off, asleep, isolated, or at a new address | Use Wake; rediscover; check Wi-Fi isolation; reserve its address |
 | Wake fails | MAC was never learned or broadcast blocked | Discover once while on; check router Wi-Fi broadcast policy |
 | Art request fails | Firmware changed/disabled Art socket | Ordinary remote control remains available |
 | Header says ART / TV? | TV is online but Art status was unavailable or ambiguous | Remote controls remain usable; LS03B firmware can report `off` while displaying art |

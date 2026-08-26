@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Check formatting
+        shell: bash
+        run: |
+          unformatted=$(gofmt -l .)
+          if [[ -n $unformatted ]]; then
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: Test with race detector and coverage
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Enforce coverage floor
+        shell: bash
+        run: |
+          coverage=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
+          awk -v coverage="$coverage" 'BEGIN { if (coverage < 75) exit 1 }'
+          echo "Backend coverage: ${coverage}%"
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Build release binaries
+        run: scripts/build-release.sh
+
+      - name: Validate repository and checksums
+        run: scripts/validate-repository.sh
+
+      - name: Package CI artifact
+        run: tar -C bin -czf omarchy-frame-linux.tar.gz frame-controller frame-controller-linux-amd64 frame-controller-linux-arm64 SHA256SUMS
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: omarchy-frame-linux
+          path: omarchy-frame-linux.tar.gz
+          if-no-files-found: error

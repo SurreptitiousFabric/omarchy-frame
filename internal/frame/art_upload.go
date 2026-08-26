@@ -20,35 +20,19 @@ import (
 
 const maxUploadSize = 20 << 20
 
+type endpointDialFunc func(*Config, map[string]any, time.Duration) (net.Conn, error)
+type artSelectFunc func(*Config, string) (map[string]any, error)
+
 func uploadArt(c *Config, input string) (map[string]any, error) {
-	p, err := localImagePath(input)
+	return uploadArtWith(c, input, connect, dialTVEndpoint, selectArt)
+}
+
+func uploadArtWith(c *Config, input string, connectArt wsConnectFunc, dialEndpoint endpointDialFunc, selectImage artSelectFunc) (map[string]any, error) {
+	f, size, kind, err := openUploadImage(input)
 	if err != nil {
 		return nil, err
 	}
-	f, err := os.Open(p)
-	if err != nil {
-		return nil, errors.New("could not open the selected image")
-	}
 	defer f.Close()
-	info, err := f.Stat()
-	if err != nil || !info.Mode().IsRegular() || info.Size() < 8 || info.Size() > maxUploadSize {
-		return nil, errors.New("image must be a regular JPEG or PNG no larger than 20 MB")
-	}
-	probe := make([]byte, 8)
-	if _, err = io.ReadFull(f, probe); err != nil {
-		return nil, errors.New("could not read the selected image")
-	}
-	kind := ""
-	if validThumbnail("jpg", probe) {
-		kind = "jpg"
-	} else if validThumbnail("png", probe) {
-		kind = "png"
-	} else {
-		return nil, errors.New("selected file is not a valid JPEG or PNG")
-	}
-	if _, err = f.Seek(0, io.SeekStart); err != nil {
-		return nil, errors.New("could not read the selected image")
-	}
 
 	id, err := artRequestID()
 	if err != nil {
@@ -58,14 +42,14 @@ func uploadArt(c *Config, input string) (map[string]any, error) {
 	if _, err = rand.Read(randomConnection[:]); err != nil {
 		return nil, err
 	}
-	w, err := connect(c, "com.samsung.art-app")
+	w, err := connectArt(c, "com.samsung.art-app")
 	if err != nil {
 		return nil, err
 	}
 	defer w.Close()
 	request := map[string]any{
 		"request": "send_image", "id": id, "request_id": id,
-		"file_type": kind, "file_size": info.Size(),
+		"file_type": kind, "file_size": size,
 		"image_date": time.Now().Format("2006:01:02 15:04:05"),
 		"matte_id":   "none", "portrait_matte_id": "none",
 		"conn_info": map[string]any{"d2d_mode": "socket", "connection_id": binary.BigEndian.Uint32(randomConnection[:]), "id": id},
@@ -83,22 +67,21 @@ func uploadArt(c *Config, input string) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := dialTVEndpoint(c, ci, 10*time.Second)
+	key, _ := ci["key"].(string)
+	if key == "" || len(key) > 4096 {
+		return nil, errors.New("TV returned invalid upload authorization")
+	}
+	conn, err := dialEndpoint(c, ci, 10*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("image upload connection: %w", err)
 	}
-	key, _ := ci["key"].(string)
-	if key == "" || len(key) > 4096 {
-		_ = conn.Close()
-		return nil, errors.New("TV returned invalid upload authorization")
-	}
-	header, _ := json.Marshal(map[string]any{"num": 0, "total": 1, "fileLength": info.Size(), "fileName": "upload", "fileType": kind, "secKey": key, "version": "0.0.1"})
+	header, _ := json.Marshal(map[string]any{"num": 0, "total": 1, "fileLength": size, "fileName": "upload", "fileType": kind, "secKey": key, "version": "0.0.1"})
 	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 	if err = binary.Write(conn, binary.BigEndian, uint32(len(header))); err == nil {
-		_, err = conn.Write(header)
+		err = writeAll(conn, header)
 	}
 	if err == nil {
-		_, err = io.CopyN(conn, f, info.Size())
+		_, err = io.CopyN(conn, f, size)
 	}
 	_ = conn.Close()
 	if err != nil {
@@ -112,8 +95,50 @@ func uploadArt(c *Config, input string) (map[string]any, error) {
 	if !safeArtID.MatchString(contentID) {
 		return nil, errors.New("TV did not return a valid uploaded artwork id")
 	}
-	_, _ = selectArt(c, contentID)
-	return map[string]any{"ok": true, "message": "Photo uploaded and selected", "content_id": contentID}, nil
+	_, selectErr := selectImage(c, contentID)
+	return uploadedPhotoResult(contentID, selectErr), nil
+}
+
+func openUploadImage(input string) (*os.File, int64, string, error) {
+	p, err := localImagePath(input)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, 0, "", errors.New("could not open the selected image")
+	}
+	fail := func(message string) (*os.File, int64, string, error) {
+		_ = f.Close()
+		return nil, 0, "", errors.New(message)
+	}
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 8 || info.Size() > maxUploadSize {
+		return fail("image must be a regular JPEG or PNG no larger than 20 MB")
+	}
+	probe := make([]byte, 8)
+	if _, err = io.ReadFull(f, probe); err != nil {
+		return fail("could not read the selected image")
+	}
+	kind := ""
+	if validThumbnail("jpg", probe) {
+		kind = "jpg"
+	} else if validThumbnail("png", probe) {
+		kind = "png"
+	} else {
+		return fail("selected file is not a valid JPEG or PNG")
+	}
+	if _, err = f.Seek(0, io.SeekStart); err != nil {
+		return fail("could not read the selected image")
+	}
+	return f, info.Size(), kind, nil
+}
+
+func uploadedPhotoResult(contentID string, selectErr error) map[string]any {
+	if selectErr != nil {
+		return map[string]any{"ok": true, "message": "Photo uploaded; select it from My Photos", "content_id": contentID, "selected": false}
+	}
+	return map[string]any{"ok": true, "message": "Photo uploaded and selected", "content_id": contentID, "selected": true}
 }
 
 func localImagePath(input string) (string, error) {

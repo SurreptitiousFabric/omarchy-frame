@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Require release-ready metadata
+        shell: bash
+        run: |
+          version=$(jq -r .version manifest.json)
+          [[ $GITHUB_REF_NAME == "v$version" ]]
+          ! grep -R "github.com/OWNER" README.md SECURITY.md
+
+      - name: Test and build
+        run: |
+          go test -race -coverprofile=coverage.out ./...
+          go vet ./...
+          scripts/build-release.sh
+          scripts/validate-repository.sh
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" bin/frame-controller-linux-amd64 bin/frame-controller-linux-arm64 bin/SHA256SUMS --verify-tag --generate-notes

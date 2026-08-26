@@ -9,14 +9,64 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"net/url"
 	"os/exec"
-	"regexp"
 	"strings"
 	"time"
 )
 
-var safeKey = regexp.MustCompile(`^KEY_[A-Z0-9_]+$`)
+var safeClickKeys = map[string]struct{}{
+	"KEY_CAPTION":   {},
+	"KEY_CHDOWN":    {},
+	"KEY_CHUP":      {},
+	"KEY_CH_LIST":   {},
+	"KEY_DOWN":      {},
+	"KEY_ENTER":     {},
+	"KEY_EXIT":      {},
+	"KEY_FF":        {},
+	"KEY_GUIDE":     {},
+	"KEY_HOME":      {},
+	"KEY_INFO":      {},
+	"KEY_LEFT":      {},
+	"KEY_MENU":      {},
+	"KEY_MUTE":      {},
+	"KEY_PLAYPAUSE": {},
+	"KEY_POWER":     {},
+	"KEY_PRECH":     {},
+	"KEY_PREVIOUS":  {},
+	"KEY_REC":       {},
+	"KEY_RETURN":    {},
+	"KEY_REWIND":    {},
+	"KEY_RIGHT":     {},
+	"KEY_SOURCE":    {},
+	"KEY_STOP":      {},
+	"KEY_TOOLS":     {},
+	"KEY_UP":        {},
+	"KEY_VOLDOWN":   {},
+	"KEY_VOLUP":     {},
+}
+
+var safeHoldKeys = map[string]struct{}{
+	"KEY_MULTI_VIEW": {},
+	"KEY_POWER":      {},
+}
+
+type wsConnectFunc func(*Config, string) (*wsConn, error)
+
+func safeRemoteKey(key, command string) bool {
+	var allowed map[string]struct{}
+	switch command {
+	case "click":
+		allowed = safeClickKeys
+	case "hold":
+		allowed = safeHoldKeys
+	default:
+		return false
+	}
+	_, ok := allowed[key]
+	return ok
+}
 
 type APIInfo struct {
 	Device  struct{ Name, ModelName, IP, WifiMac, PowerState string } `json:"device"`
@@ -25,12 +75,15 @@ type APIInfo struct {
 }
 
 func getInfo(ip string) (APIInfo, error) {
+	return getInfoWithClient(ip, "http://"+net.JoinHostPort(ip, "8001")+"/api/v2/", lanHTTPClient(1800*time.Millisecond))
+}
+
+func getInfoWithClient(ip, endpoint string, client http.Client) (APIInfo, error) {
 	var out APIInfo
 	if !isLocalTVIP(net.ParseIP(ip)) {
 		return out, errors.New("TV address is not local")
 	}
-	c := lanHTTPClient(1800 * time.Millisecond)
-	r, e := c.Get("http://" + ip + ":8001/api/v2/")
+	r, e := client.Get(endpoint)
 	if e != nil {
 		return out, e
 	}
@@ -38,7 +91,14 @@ func getInfo(ip string) (APIInfo, error) {
 	if r.StatusCode != 200 {
 		return out, fmt.Errorf("TV HTTP %s", r.Status)
 	}
-	e = json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&out)
+	body, e := io.ReadAll(io.LimitReader(r.Body, (1<<20)+1))
+	if e != nil {
+		return out, e
+	}
+	if len(body) > 1<<20 {
+		return out, errors.New("TV information response too large")
+	}
+	e = json.Unmarshal(body, &out)
 	return out, e
 }
 
@@ -60,10 +120,17 @@ func connectWithHandshakeTimeout(c *Config, channel string, handshakeTimeout tim
 	if e != nil {
 		return nil, e
 	}
+	if e = completePairing(c, w, handshakeTimeout); e != nil {
+		w.Close()
+		return nil, e
+	}
+	return w, nil
+}
+
+func completePairing(c *Config, w *wsConn, handshakeTimeout time.Duration) error {
 	msg, e := w.readText(handshakeTimeout)
 	if e != nil {
-		w.Close()
-		return nil, fmt.Errorf("approve Omarchy Frame on the TV: %w", e)
+		return fmt.Errorf("approve Omarchy Frame on the TV: %w", e)
 	}
 	var event struct {
 		Event string `json:"event"`
@@ -73,41 +140,65 @@ func connectWithHandshakeTimeout(c *Config, channel string, handshakeTimeout tim
 	}
 	_ = json.Unmarshal(msg, &event)
 	if event.Event == "ms.channel.unauthorized" {
-		w.Close()
-		return nil, errors.New("TV denied pairing; remove the old authorization in TV settings and retry")
+		return errors.New("TV denied pairing; remove the old authorization in TV settings and retry")
 	}
 	if event.Data.Token != "" && event.Data.Token != c.Token {
 		c.Token = event.Data.Token
 		if e = saveConfig(*c); e != nil {
-			w.Close()
-			return nil, e
+			return e
 		}
 	}
-	return w, nil
+	return nil
 }
 
 func sendKey(c *Config, key, cmd string, hold time.Duration) error {
-	if !safeKey.MatchString(key) {
-		return errors.New("invalid Samsung key")
+	return sendKeyWith(c, key, cmd, hold, connect, time.Sleep)
+}
+
+func sendKeyWith(c *Config, key, cmd string, hold time.Duration, connectRemote wsConnectFunc, wait func(time.Duration)) error {
+	if !safeRemoteKey(key, cmd) {
+		return errors.New("unsupported Samsung remote key")
 	}
-	w, e := connect(c, "samsung.remote.control")
+	w, e := connectRemote(c, "samsung.remote.control")
 	if e != nil {
 		return e
 	}
 	defer w.Close()
-	send := func(action string) error {
-		p := map[string]any{"method": "ms.remote.control", "params": map[string]any{"Cmd": action, "DataOfCmd": key, "Option": "false", "TypeOfRemote": "SendRemoteKey"}}
-		b, _ := json.Marshal(p)
-		return w.writeText(b)
-	}
+	send := func(action string) error { return sendRemoteKey(w, key, action) }
 	if cmd == "hold" {
-		if e = send("Press"); e != nil {
-			return e
-		}
-		time.Sleep(hold)
-		return send("Release")
+		return sendHeldKey(send, hold, wait)
 	}
 	return send("Click")
+}
+
+func sendRemoteKey(w *wsConn, key, action string) error {
+	p := map[string]any{"method": "ms.remote.control", "params": map[string]any{"Cmd": action, "DataOfCmd": key, "Option": "false", "TypeOfRemote": "SendRemoteKey"}}
+	b, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	return w.writeText(b)
+}
+
+func sendHeldKey(send func(string) error, hold time.Duration, wait func(time.Duration)) (err error) {
+	if err = send("Press"); err != nil {
+		return err
+	}
+	released := false
+	defer func() {
+		if released {
+			return
+		}
+		if retryErr := send("Release"); retryErr == nil {
+			err = nil
+		} else if err == nil {
+			err = retryErr
+		}
+	}()
+	wait(hold)
+	err = send("Release")
+	released = err == nil
+	return err
 }
 
 func wake(c Config) error {

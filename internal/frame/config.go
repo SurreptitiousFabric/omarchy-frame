@@ -71,15 +71,48 @@ func saveConfig(c Config) error {
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return err
 	}
-	b, _ := json.MarshalIndent(c, "", "  ")
-	tmp := p + ".tmp"
-	if err := os.WriteFile(tmp, append(b, '\n'), 0600); err != nil {
+	b, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
 		return err
 	}
-	if err := os.Chmod(tmp, 0600); err != nil {
+	tmp, err := os.CreateTemp(filepath.Dir(p), ".config-*.tmp")
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, p)
+	tmpPath := tmp.Name()
+	keep := false
+	defer func() {
+		_ = tmp.Close()
+		if !keep {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if err = tmp.Chmod(0600); err == nil {
+		_, err = tmp.Write(append(b, '\n'))
+	}
+	if err == nil {
+		err = tmp.Sync()
+	}
+	if closeErr := tmp.Close(); err == nil {
+		err = closeErr
+	}
+	if err != nil {
+		return err
+	}
+	if err = os.Rename(tmpPath, p); err != nil {
+		return err
+	}
+	keep = true
+	dir, err := os.Open(filepath.Dir(p))
+	if err != nil {
+		return err
+	}
+	err = dir.Sync()
+	closeErr := dir.Close()
+	if err != nil {
+		return err
+	}
+	return closeErr
 }
 
 func isLocalTVIP(ip net.IP) bool {

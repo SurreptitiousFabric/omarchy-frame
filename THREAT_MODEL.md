@@ -19,15 +19,18 @@ cannot authenticate a public CA chain.
 
 - Only numeric private/link-local TV addresses are accepted.
 - HTTP redirects are refused; responses and WebSocket frames are bounded.
-- Remote key names, hold duration, app identifiers, and read-only Art requests
-  are allow-shaped.
+- Remote clicks and holds use separate explicit allowlists. Holds are limited to
+  Power and Multi View; service, factory, reset, and unknown keys are rejected
+  before a TV connection is opened.
 - Pairing state is atomically written in an owner-only directory/file.
 - Public JSON never serializes the token; regression tests enforce this.
 - Public error text redacts LAN endpoints and token query parameters.
 - TLS requires 1.2+, despite unavoidable certificate verification bypass.
 - Discovery accepts only local IPv4 Samsung records and re-verifies TV metadata.
 - Thumbnail transfer endpoints must resolve to the configured TV address;
-  ports, headers, IDs, file sizes, and item counts are validated and bounded.
+  ports, headers, IDs, file sizes, and item counts are validated. One thumbnail
+  batch and the generated cache are each bounded to 64 MB; cache pruning ignores
+  unrelated filenames and preserves the current gallery batch.
 - Artwork thumbnails are cached under owner-only local state with hashed names
   and owner-only file permissions.
 - Uploads accept only an explicitly selected absolute local file URL/path, open
@@ -37,6 +40,12 @@ cannot authenticate a public CA chain.
   argument vector and reads only its selected-path output; no shell is invoked.
 - Deletion accepts one validated content ID, re-reads the TV's My Photos list,
   and refuses IDs outside that category. The UI requires a second confirmation.
+- Art replies are correlated to generated request IDs, so unsolicited mode
+  broadcasts cannot be mistaken for a query result.
+- WebSocket messages are size-bounded, handle fragmented text and short writes,
+  and reject masked server frames, unsupported opcodes, and malformed controls.
+- Held keys retry Release before the connection closes if the first release
+  write fails.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

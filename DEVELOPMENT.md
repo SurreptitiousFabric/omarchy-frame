@@ -7,6 +7,9 @@ operation. JSON is the only process interface. The backend opens no listening
 port and uses only the Go standard library; Avahi is an optional Omarchy-provided
 discovery fallback.
 
+`BarWidget.qml` composes the panel. Focused tab and card/icon implementations
+live under `components/`; `Service.qml` is the only UI/backend boundary.
+
 ## Build and test
 
 ```bash
@@ -33,6 +36,8 @@ the tests never listen beyond `127.0.0.1`.
 - Working tree and `git diff --check` clean
 - Tests, race detector, vet, manifest validation, and QML runtime load pass
 - Coverage reviewed by function; security/protocol paths cannot regress silently
+- Backend statement coverage remains at least 75%; hardware-only wrappers are
+  exercised by the live acceptance matrix
 - ARM64 and AMD64 binaries rebuilt with CGO disabled and `-trimpath`
 - Tracked launcher selects the native release binary on both supported architectures
 - `SHA256SUMS` reproduced and verified

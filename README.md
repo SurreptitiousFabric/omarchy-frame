@@ -12,14 +12,15 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
   click-to-select control when the Frame Art service responds
 - Owner-selected JPEG/PNG upload to Samsung **My Photos**, confirmed deletion
   of My Photos, plus built-in sequential and shuffled slideshow controls
-- Power off and Wake-on-LAN
-- Live header status distinguishes TV, Art Mode, off, and unavailable mode data
-- Navigation, volume, mute, channel, media, number, color, menu, source, and
-  other Samsung remote keys
+- Deliberate three-second power-off hold and Wake-on-LAN
+- Live header status distinguishes TV, Art Mode, unreachable, and unavailable
+  mode data
+- Navigation, volume, mute, channel, media, menu, source, and other explicitly
+  allowed Samsung remote keys
 - Task-focused Remote, Art, Photos, and Setup tabs; Remote adds Navigate,
   Sound, Media, and More subtabs so only one compact control set is visible
 - Font-independent QML-drawn TV identity; no private-use icon font is required
-- Art Mode entry plus feature-detected Art WebSocket requests
+- Clearly labelled TV/Art toggle plus feature-detected Art WebSocket requests
 - Portrait/landscape rotation using the LS03B `KEY_MULTI_VIEW` three-second hold
 - A built-in capability reference and visible errors for firmware gaps
 
@@ -34,9 +35,15 @@ This repository must include release binaries before installation. Then run:
 omarchy plugin add https://github.com/OWNER/omarchy-frame.git --enable
 ```
 
-For local development, build first with `scripts/build-release.sh`, copy the
-repository to `~/.config/omarchy/plugins/swa.frame`, then enable it with
-`omarchy plugin enable swa.frame`.
+For local development, build and commit the working tree, then use Omarchy's
+normal Git-backed installer with an absolute local URL:
+
+```bash
+omarchy plugin add file:///absolute/path/to/omarchy-frame --enable
+```
+
+An existing plugin with the same ID must be removed or updated first. Omarchy
+backs up an unmanaged plugin folder when it is removed.
 
 On the first command, approve **Omarchy Frame** on the television. The pairing
 token is saved as `~/.local/state/omarchy-frame/config.json` with mode `0600`.
@@ -87,12 +94,13 @@ you want to revoke its token.
 Omarchy plugins run unsandboxed. This plugin spawns only its bundled backend.
 The QML UI launches the installed Zenity file chooser as a separate process so
 a desktop-portal fault cannot crash the shell. The backend accepts fixed
-commands, validates IP addresses, remote key names,
-hold durations, image signatures and sizes, limits network response sizes, and
-never opens a listening port. Upload transfer endpoints are pinned to the
-configured TV. Samsung uses a self-signed certificate on the local secure TV
-WebSocket, so certificate-chain verification is unavailable; the connection
-is restricted to the configured numeric IP and Samsung port 8002.
+commands, validates IP addresses, enforces explicit click and hold key
+allowlists, bounds hold durations, verifies image signatures and sizes, limits
+network responses and caches, and never opens a listening port. Upload and
+thumbnail transfer endpoints are pinned to the configured TV. Samsung uses a
+self-signed certificate on the local secure TV WebSocket, so certificate-chain
+verification is unavailable; the connection is restricted to the configured
+numeric IP and Samsung port 8002.
 
 Samsung's undocumented Art protocol and application REST endpoint vary across
 firmware. Ordinary remote control remains usable when those endpoints are

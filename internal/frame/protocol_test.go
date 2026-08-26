@@ -6,8 +6,10 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -98,13 +100,33 @@ func TestDialWSRejectsBadHandshake(t *testing.T) {
 }
 
 func serverFrame(op byte, payload []byte) []byte {
-	h := []byte{0x80 | op}
+	return serverFragment(true, op, payload)
+}
+
+func serverFragment(fin bool, op byte, payload []byte) []byte {
+	first := op
+	if fin {
+		first |= 0x80
+	}
+	h := []byte{first}
 	if len(payload) < 126 {
 		h = append(h, byte(len(payload)))
 	} else {
 		h = append(h, 126, byte(len(payload)>>8), byte(len(payload)))
 	}
 	return append(h, payload...)
+}
+
+type shortWriteConn struct {
+	net.Conn
+	max int
+}
+
+func (c shortWriteConn) Write(p []byte) (int, error) {
+	if len(p) > c.max {
+		p = p[:c.max]
+	}
+	return c.Conn.Write(p)
 }
 
 func readClientFrame(t *testing.T, r *bufio.Reader) (byte, []byte) {
@@ -114,6 +136,10 @@ func readClientFrame(t *testing.T, r *bufio.Reader) (byte, []byte) {
 	n := int(b & 0x7f)
 	if n == 126 {
 		var x uint16
+		_ = binary.Read(r, binary.BigEndian, &x)
+		n = int(x)
+	} else if n == 127 {
+		var x uint64
 		_ = binary.Read(r, binary.BigEndian, &x)
 		n = int(x)
 	}
@@ -146,6 +172,48 @@ func TestWriteTextProducesMaskedFrame(t *testing.T) {
 	}
 }
 
+func TestWriteTextCompletesShortWrites(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: shortWriteConn{Conn: client, max: 2}, r: bufio.NewReader(client)}
+	done := make(chan error, 1)
+	go func() { done <- w.writeText([]byte("short-write-safe")) }()
+	op, p := readClientFrame(t, bufio.NewReader(server))
+	if op != 1 || string(p) != "short-write-safe" {
+		t.Fatalf("op=%d payload=%q", op, p)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestWriteTextLengthEncodingsAndLimits(t *testing.T) {
+	for _, size := range []int{130, 70 << 10} {
+		client, server := net.Pipe()
+		w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+		payload := []byte(strings.Repeat("x", size))
+		done := make(chan error, 1)
+		go func() { done <- w.writeText(payload) }()
+		_, got := readClientFrame(t, bufio.NewReader(server))
+		if len(got) != size {
+			t.Fatalf("size=%d got=%d", size, len(got))
+		}
+		if err := <-done; err != nil {
+			t.Fatal(err)
+		}
+		_ = client.Close()
+		_ = server.Close()
+	}
+	w := &wsConn{}
+	if err := w.writeText(make([]byte, maxWSMessageSize+1)); err == nil {
+		t.Fatal("accepted oversized outgoing message")
+	}
+	if err := w.writeControl(0xA, make([]byte, 126)); err == nil {
+		t.Fatal("accepted oversized control payload")
+	}
+}
+
 func TestReadTextHandlesPingThenText(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
@@ -163,6 +231,42 @@ func TestReadTextHandlesPingThenText(t *testing.T) {
 	}
 	if string(p) != `{"ok":true}` {
 		t.Fatalf("%q", p)
+	}
+}
+
+func TestReadTextCombinesFragments(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	go func() {
+		_, _ = server.Write(serverFragment(false, 1, []byte(` {"ok":`)))
+		_, _ = server.Write(serverFragment(true, 0, []byte(`true} `)))
+	}()
+	p, err := w.readText(time.Second)
+	if err != nil || string(p) != `{"ok":true}` {
+		t.Fatalf("payload=%q err=%v", p, err)
+	}
+}
+
+func TestReadTextRejectsMalformedFrames(t *testing.T) {
+	for _, frame := range [][]byte{
+		serverFragment(true, 0, []byte("orphan")),
+		serverFragment(false, 9, []byte("ping")),
+		{0x81, 0x81, 0, 0, 0, 0, 'x'},
+		serverFragment(true, 2, []byte("binary")),
+		serverFragment(true, 3, []byte("unknown")),
+		{0xC1, 0},
+		append(serverFragment(false, 1, []byte("part")), serverFragment(true, 1, []byte("new"))...),
+	} {
+		client, server := net.Pipe()
+		w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+		go func(b []byte) { _, _ = server.Write(b) }(frame)
+		if _, err := w.readText(time.Second); err == nil {
+			t.Fatalf("accepted malformed frame %x", frame)
+		}
+		_ = client.Close()
+		_ = server.Close()
 	}
 }
 
@@ -221,9 +325,93 @@ func TestRemoteURLAndAvahiParser(t *testing.T) {
 	}
 }
 
-func TestRemotePayloadIsJSON(t *testing.T) {
-	p := map[string]any{"method": "ms.remote.control", "params": map[string]any{"DataOfCmd": "KEY_HOME"}}
-	if _, err := json.Marshal(p); err != nil {
+func TestCompletePairingPersistsNewToken(t *testing.T) {
+	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	go func() {
+		message, _ := json.Marshal(map[string]any{"event": "ms.channel.connect", "data": map[string]any{"token": "paired-token"}})
+		_, _ = server.Write(serverFrame(1, message))
+	}()
+	c := Config{IP: "192.168.1.8", Name: "Frame"}
+	if err := completePairing(&c, w, time.Second); err != nil {
 		t.Fatal(err)
+	}
+	stored, err := loadConfig()
+	if err != nil || stored.Token != "paired-token" || c.Token != "paired-token" {
+		t.Fatalf("memory=%#v stored=%#v err=%v", c, stored, err)
+	}
+}
+
+func TestCompletePairingRejectsUnauthorized(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	go func() {
+		message, _ := json.Marshal(map[string]any{"event": "ms.channel.unauthorized"})
+		_, _ = server.Write(serverFrame(1, message))
+	}()
+	if err := completePairing(&Config{}, w, time.Second); err == nil || !strings.Contains(err.Error(), "denied pairing") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestRemotePayloadIsJSON(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	done := make(chan error, 1)
+	go func() { done <- sendRemoteKey(w, "KEY_HOME", "Click") }()
+	op, payload := readClientFrame(t, bufio.NewReader(server))
+	if op != 1 {
+		t.Fatalf("unexpected opcode %d", op)
+	}
+	var message map[string]any
+	if err := json.Unmarshal(payload, &message); err != nil {
+		t.Fatal(err)
+	}
+	params, _ := message["params"].(map[string]any)
+	if message["method"] != "ms.remote.control" || params["Cmd"] != "Click" || params["DataOfCmd"] != "KEY_HOME" || params["TypeOfRemote"] != "SendRemoteKey" {
+		t.Fatalf("unexpected payload %#v", message)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestSendKeyDispatchesOnlyAllowedActions(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	connected := false
+	connector := func(_ *Config, channel string) (*wsConn, error) {
+		connected = true
+		if channel != "samsung.remote.control" {
+			t.Fatalf("unexpected channel %q", channel)
+		}
+		return w, nil
+	}
+	done := make(chan string, 1)
+	go func() {
+		_, payload := readClientFrame(t, bufio.NewReader(server))
+		var message map[string]any
+		_ = json.Unmarshal(payload, &message)
+		params, _ := message["params"].(map[string]any)
+		done <- fmt.Sprint(params["Cmd"], ":", params["DataOfCmd"])
+	}()
+	if err := sendKeyWith(&Config{}, "KEY_HOME", "click", 0, connector, time.Sleep); err != nil {
+		t.Fatal(err)
+	}
+	if got := <-done; got != "Click:KEY_HOME" {
+		t.Fatalf("got %q", got)
+	}
+	connected = false
+	if err := sendKeyWith(&Config{}, "KEY_FACTORY", "click", 0, connector, time.Sleep); err == nil || connected {
+		t.Fatalf("unsafe key: connected=%v err=%v", connected, err)
 	}
 }

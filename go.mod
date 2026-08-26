@@ -1,3 +1,3 @@
 module github.com/swa/omarchy-frame
 
-go 1.24
+go 1.27.0
