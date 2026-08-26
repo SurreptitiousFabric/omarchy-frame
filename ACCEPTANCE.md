@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `0e14e31`
+- Code and packaging candidate: local commit `c39bdaf`
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -21,24 +21,25 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 75.7% backend / 75.9% repository total on `0e14e31` |
+| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `c39bdaf` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
 | QML parses and loads in Omarchy shell | PASS | Standalone lint plus live shell load |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `0e14e31` |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `0e14e31`; race, vet, manifest, repository policy, checksum, and no-Go runtime gates passed |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `c39bdaf` |
+| Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `c39bdaf`; race, vet, manifest, repository policy, checksum, and no-Go runtime gates passed |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
-| Marketplace static security baseline | PASS | Current engine on exact `0e14e31`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
+| Marketplace static security baseline | PASS | Current engine on exact `c39bdaf`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
 | CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Exact `0e14e31` local `file://` install under the permanent ID |
+| Git-backed install through `omarchy plugin add` | PASS | Exact `c39bdaf` local `file://` install under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
 | Panel opens without Frame-specific QML/runtime error | PASS | Live shell IPC smoke test |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
@@ -52,7 +53,7 @@ image, or raw TV response belongs in this file.
 |---|---|---|
 | Discover expected television | PASS | Initial live setup |
 | One-time on-TV authorization and `0600` token state | PASS | Initial live setup and permission check |
-| Sanitized status contains no token or private endpoint | PASS | Live status and redaction regression tests |
+| Sanitized status contains no token or private endpoint | PASS | Raw live JSON allowlist plus exact stored IP/MAC non-occurrence and IPv4/IPv6/token redaction tests |
 | Ordinary remote and power/status control | PASS | Initial live acceptance |
 | Wake-on-LAN after full power-off | PENDING | Requires an observer near the television |
 | Confirmed Art Mode status | PASS | Repeated live Art `on` response |

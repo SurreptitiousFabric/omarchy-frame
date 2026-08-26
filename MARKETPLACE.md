@@ -18,7 +18,7 @@ Submission requirements last reviewed 2026-08-26 against
   discovery fallback; users do not need Go
 
 The marketplace's current static baseline engine was run locally against exact
-candidate `0e14e31f4f3786ad1b5f9e066ecf1f66743edcf3`. It returned
+candidate `c39bdaf20975336544c18f54e0dcc3d00a00406d`. It returned
 `review-required` with no findings and no approval block. Its only capability
 was `bundled-executable-binary`, which is intentional: static ARM64 and AMD64
 backends let users install the plugin without Go. Marketplace publication will
