@@ -18,7 +18,6 @@ BarWidget {
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
     readonly property color softFill: Style.normalFillFor(panelForeground, Color.accent)
     readonly property string uiFont: "sans-serif"
-    readonly property string iconFont: bar ? bar.fontFamily : Style.font.family
 
     property bool popupOpen: false
     property string page: "remote"
@@ -86,6 +85,40 @@ BarWidget {
         foreground: root.panelForeground
         bordered: false
         focusable: true
+    }
+
+    component TvIcon: Item {
+        property color stroke: root.panelForeground
+        property real iconSize: 24
+
+        implicitWidth: iconSize
+        implicitHeight: iconSize
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: parent.height * 0.10
+            width: parent.width * 0.82
+            height: parent.height * 0.62
+            radius: Math.max(1, parent.width * 0.06)
+            color: "transparent"
+            border.color: parent.stroke
+            border.width: Math.max(1, Math.round(parent.width * 0.08))
+        }
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: parent.height * 0.72
+            width: Math.max(1, parent.width * 0.08)
+            height: parent.height * 0.12
+            color: parent.stroke
+        }
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: parent.height * 0.84
+            width: parent.width * 0.42
+            height: Math.max(1, parent.height * 0.07)
+            radius: height / 2
+            color: parent.stroke
+        }
     }
 
     component GalleryCard: Rectangle {
@@ -160,9 +193,10 @@ BarWidget {
             anchors.bottom: parent.bottom
             anchors.margins: 7
             size: 30
-            iconText: "󰆴"
+            iconText: "×"
             tooltipText: "Delete photo"
-            fontFamily: root.iconFont
+            fontFamily: root.uiFont
+            fontSize: Style.font.title
             foreground: "white"
             hoverColor: Color.urgent
             onClicked: card.deleteRequested(String(card.item.id))
@@ -178,11 +212,9 @@ BarWidget {
 
     Component {
         id: frameIcon
-        Text {
-            text: "󰔂"
-            color: root.service && root.service.snapshot.online ? Color.accent : root.panelDim
-            font.family: root.iconFont
-            font.pixelSize: Style.font.display
+        TvIcon {
+            iconSize: Style.font.display
+            stroke: root.service && root.service.snapshot.online ? Color.accent : root.panelDim
         }
     }
 
@@ -191,19 +223,22 @@ BarWidget {
         Row {
             spacing: Style.space(4)
             PanelActionButton {
-                iconText: "󰑐"
+                iconText: "↻"
                 tooltipText: "Refresh"
-                fontFamily: root.iconFont
+                fontFamily: root.uiFont
                 focusable: true
                 foreground: root.panelForeground
                 onClicked: root.service && root.service.refresh()
             }
-            PanelActionButton {
-                iconText: "󰐥"
+            Button {
+                text: root.service && root.service.snapshot.online ? "Off" : "Wake"
                 tooltipText: root.service && root.service.snapshot.online ? "Turn TV off" : "Wake TV"
-                fontFamily: root.iconFont
+                fontFamily: root.uiFont
+                fontSize: Style.font.caption
                 focusable: true
                 foreground: root.service && root.service.snapshot.online ? root.panelForeground : Color.accent
+                background: "transparent"
+                bordered: false
                 onClicked: root.service && (root.service.snapshot.online ? root.service.key("KEY_POWER") : root.service.wake())
             }
         }
@@ -243,12 +278,10 @@ BarWidget {
     implicitHeight: barSize
     opacity: service && service.snapshot.online ? 1 : 0.6
 
-    Text {
+    TvIcon {
         anchors.centerIn: parent
-        text: "󰔂"
-        color: root.bar ? root.bar.barForeground : Color.foreground
-        font.family: root.iconFont
-        font.pixelSize: Style.font.body
+        iconSize: Math.max(14, Style.font.body)
+        stroke: root.bar ? root.bar.barForeground : Color.foreground
     }
 
     WidgetButton {
@@ -679,9 +712,9 @@ BarWidget {
                                 onClicked: root.service.key("KEY_AMBIENT")
                             }
                             PanelActionButton {
-                                iconText: "󰑐"
+                                iconText: "↻"
                                 tooltipText: "Refresh artwork"
-                                fontFamily: root.iconFont
+                                fontFamily: root.uiFont
                                 foreground: root.panelForeground
                                 size: 42
                                 focusable: true
@@ -739,9 +772,9 @@ BarWidget {
                                 onClicked: photoPicker.running = true
                             }
                             PanelActionButton {
-                                iconText: "󰑐"
+                                iconText: "↻"
                                 tooltipText: "Refresh photos"
-                                fontFamily: root.iconFont
+                                fontFamily: root.uiFont
                                 foreground: root.panelForeground
                                 size: 42
                                 focusable: true

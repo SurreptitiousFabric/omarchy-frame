@@ -17,6 +17,7 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
   other Samsung remote keys
 - Task-focused Remote, Art, Photos, and Setup tabs; Remote adds Navigate,
   Sound, Media, and More subtabs so only one compact control set is visible
+- Font-independent QML-drawn TV identity; no private-use icon font is required
 - Art Mode entry plus feature-detected Art WebSocket requests
 - Portrait/landscape rotation using the LS03B `KEY_MULTI_VIEW` three-second hold
 - A built-in capability reference and visible errors for firmware gaps
