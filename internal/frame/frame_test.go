@@ -143,6 +143,27 @@ func TestQMLRemoteKeysMatchBackendAllowlist(t *testing.T) {
 	}
 }
 
+func TestGalleryCardsRemainKeyboardAccessible(t *testing.T) {
+	body, err := os.ReadFile("../../components/GalleryCard.qml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(body)
+	for _, contract := range []string{
+		"activeFocusOnTab: true",
+		"Accessible.role: Accessible.Button",
+		"Keys.onReturnPressed",
+		"Keys.onEnterPressed",
+		"Keys.onSpacePressed",
+		"card.forceActiveFocus()",
+		"focusable: true",
+	} {
+		if !strings.Contains(source, contract) {
+			t.Fatalf("GalleryCard keyboard contract missing %q", contract)
+		}
+	}
+}
+
 func TestHeldKeyAlwaysAttemptsRelease(t *testing.T) {
 	var actions []string
 	failedRelease := true

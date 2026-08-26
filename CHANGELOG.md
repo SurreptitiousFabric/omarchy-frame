@@ -24,6 +24,8 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
   concurrent config writes collision-safe and durable.
 - Report upload success separately from follow-up artwork selection.
 - Generate portable release checksums with relative filenames.
+- Make artwork and photo cards keyboard-focusable, expose accessible button
+  semantics, and support Enter, Return, and Space activation.
 
 ### Changed
 

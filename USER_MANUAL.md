@@ -14,6 +14,11 @@ trustworthy Art Mode answer.
 Middle-click the bar icon or press the refresh button to recheck. The status is
 refreshed every 15 seconds while the panel is open by default.
 
+Use **Tab** and **Shift+Tab** to move through controls, then **Enter**,
+**Return**, or **Space** to activate the focused control. Artwork and photo
+cards participate in the same focus route; deleting a photo remains a separate
+focused action followed by confirmation.
+
 ## Setup
 
 1. Open **Setup** and choose **Find nearby TVs**.

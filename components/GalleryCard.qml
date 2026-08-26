@@ -16,11 +16,28 @@ Rectangle {
 
     Layout.fillWidth: true
     Layout.preferredHeight: 138
+    activeFocusOnTab: true
     radius: Style.cornerRadius
     color: softFill
     clip: true
-    border.width: String(item.id) === selectedID ? 2 : 0
+    border.width: activeFocus || String(item.id) === selectedID ? 2 : 0
     border.color: Color.accent
+    Accessible.role: Accessible.Button
+    Accessible.name: deletable ? "Select photo" : "Select artwork"
+    Accessible.description: String(item.id) === selectedID ? "Currently displayed on the television" : "Display this item on the television"
+
+    Keys.onReturnPressed: event => {
+        card.selected(String(card.item.id));
+        event.accepted = true;
+    }
+    Keys.onEnterPressed: event => {
+        card.selected(String(card.item.id));
+        event.accepted = true;
+    }
+    Keys.onSpacePressed: event => {
+        card.selected(String(card.item.id));
+        event.accepted = true;
+    }
 
     Image {
         anchors.fill: parent
@@ -78,6 +95,7 @@ Rectangle {
         fontSize: Style.font.title
         foreground: "white"
         hoverColor: Color.urgent
+        focusable: true
         onClicked: card.deleteRequested(String(card.item.id))
     }
 
@@ -85,6 +103,9 @@ Rectangle {
         anchors.fill: parent
         z: 0
         cursorShape: Qt.PointingHandCursor
-        onClicked: card.selected(String(card.item.id))
+        onClicked: {
+            card.forceActiveFocus();
+            card.selected(String(card.item.id));
+        }
     }
 }
