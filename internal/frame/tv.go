@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"os/exec"
 	"regexp"
@@ -27,7 +26,10 @@ type APIInfo struct {
 
 func getInfo(ip string) (APIInfo, error) {
 	var out APIInfo
-	c := http.Client{Timeout: 1800 * time.Millisecond}
+	if !isLocalTVIP(net.ParseIP(ip)) {
+		return out, errors.New("TV address is not local")
+	}
+	c := lanHTTPClient(1800 * time.Millisecond)
 	r, e := c.Get("http://" + ip + ":8001/api/v2/")
 	if e != nil {
 		return out, e
@@ -105,16 +107,9 @@ func sendKey(c *Config, key, cmd string, hold time.Duration) error {
 }
 
 func wake(c Config) error {
-	hw, e := net.ParseMAC(c.MAC)
+	p, e := wakePacket(c.MAC)
 	if e != nil {
-		return errors.New("TV MAC address is not known; discover while the TV is on first")
-	}
-	if len(hw) != 6 {
-		return errors.New("unsupported MAC address")
-	}
-	p := bytes.Repeat([]byte{0xff}, 6)
-	for i := 0; i < 16; i++ {
-		p = append(p, hw...)
+		return e
 	}
 	conn, e := net.DialUDP("udp4", nil, &net.UDPAddr{IP: net.IPv4bcast, Port: 9})
 	if e != nil {
@@ -124,6 +119,21 @@ func wake(c Config) error {
 	_ = conn.SetWriteDeadline(time.Now().Add(time.Second))
 	_, e = conn.Write(p)
 	return e
+}
+
+func wakePacket(mac string) ([]byte, error) {
+	hw, e := net.ParseMAC(mac)
+	if e != nil {
+		return nil, errors.New("TV MAC address is not known; discover while the TV is on first")
+	}
+	if len(hw) != 6 {
+		return nil, errors.New("unsupported MAC address")
+	}
+	p := bytes.Repeat([]byte{0xff}, 6)
+	for i := 0; i < 16; i++ {
+		p = append(p, hw...)
+	}
+	return p, nil
 }
 
 func discover() ([]Config, error) {
@@ -171,6 +181,10 @@ func discoverAvahi() []Config {
 	if err != nil && len(b) == 0 {
 		return nil
 	}
+	return parseAvahi(b, getInfo)
+}
+
+func parseAvahi(b []byte, infoFn func(string) (APIInfo, error)) []Config {
 	seen := map[string]bool{}
 	var out []Config
 	for _, line := range strings.Split(string(b), "\n") {
@@ -183,11 +197,11 @@ func discoverAvahi() []Config {
 			continue
 		}
 		ip := fields[7]
-		if seen[ip] || net.ParseIP(ip) == nil {
+		if seen[ip] || !isLocalTVIP(net.ParseIP(ip)) {
 			continue
 		}
 		seen[ip] = true
-		if info, err := getInfo(ip); err == nil {
+		if info, err := infoFn(ip); err == nil {
 			out = append(out, Config{IP: ip, MAC: info.Device.WifiMac, Name: info.Device.Name, Model: info.Device.ModelName})
 		}
 	}

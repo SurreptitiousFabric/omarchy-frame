@@ -6,8 +6,22 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var addressInError = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}(?::\d{1,5})?\b`)
+var tokenInError = regexp.MustCompile(`(?i)([?&]token=)[^&\s]+`)
+
+// PublicError removes LAN endpoints and credentials from errors returned over
+// the JSON process boundary. Detailed transport errors must not enter shell logs.
+func PublicError(err error) string {
+	if err == nil {
+		return ""
+	}
+	s := addressInError.ReplaceAllString(err.Error(), "<local-address>")
+	return tokenInError.ReplaceAllString(s, "${1}<redacted>")
+}
 
 type Config struct {
 	IP    string `json:"ip"`
@@ -49,10 +63,10 @@ func loadConfig() (Config, error) {
 }
 
 func saveConfig(c Config) error {
-	if net.ParseIP(c.IP) == nil {
-		return errors.New("invalid TV IP address")
-	}
 	c.IP = strings.TrimSpace(c.IP)
+	if !isLocalTVIP(net.ParseIP(c.IP)) {
+		return errors.New("TV address must be a private or link-local IP")
+	}
 	p := configPath()
 	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
 		return err
@@ -66,4 +80,8 @@ func saveConfig(c Config) error {
 		return err
 	}
 	return os.Rename(tmp, p)
+}
+
+func isLocalTVIP(ip net.IP) bool {
+	return ip != nil && !ip.IsLoopback() && !ip.IsUnspecified() && (ip.IsPrivate() || ip.IsLinkLocalUnicast())
 }

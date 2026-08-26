@@ -11,7 +11,7 @@ import (
 func main() {
 	result, err := frame.Run(os.Args[1:])
 	if err != nil {
-		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": false, "error": err.Error()})
+		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": false, "error": frame.PublicError(err)})
 		os.Exit(1)
 	}
 	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {

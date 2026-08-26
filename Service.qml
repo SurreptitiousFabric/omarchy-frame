@@ -16,11 +16,15 @@ Item {
   property string error: ""
   property bool panelOpen: false
   property var pending: []
+  property int pollIntervalMs: 15000
 
   function parse(text) { try { return JSON.parse(String(text || "").trim()) } catch (_) { return null } }
   function compact(text) { var s=String(text||"").replace(/\s+/g," ").trim(); return s.length>180?s.substring(0,177)+"…":s }
   function run(args, success) {
-    if (actionProcess.running) { pending.push({args:args, success:success}); return }
+    if (actionProcess.running) {
+      if (pending.length >= 20) { error = "Too many queued commands"; return }
+      pending.push({args:args, success:success}); return
+    }
     actionProcess.command = [backend].concat(args); actionProcess.successText = success || "Done"; actionProcess.running = true
   }
   function next() { if (!pending.length) return; var q=pending.shift(); run(q.args,q.success) }
@@ -57,6 +61,6 @@ Item {
     onExited:function(code){var p=root.parse(actionOut.text);if(code===0&&p&&p.ok){root.error="";if(p.apps)root.apps=p.apps;if(p.response)root.message=root.compact(JSON.stringify(p.response));else if(successText!=="")root.message=successText;else if(p.message)root.message=p.message}else root.error=root.compact((p&&p.error)||actionErr.text||"Command failed");refreshTimer.restart();Qt.callLater(root.next)}
   }
   Timer{id:refreshTimer;interval:900;onTriggered:root.refresh()}
-  Timer{interval:15000;repeat:true;running:true;onTriggered:if(root.panelOpen)root.refresh()}
+  Timer{interval:root.pollIntervalMs;repeat:true;running:true;onTriggered:if(root.panelOpen)root.refresh()}
   Component.onCompleted: refresh()
 }

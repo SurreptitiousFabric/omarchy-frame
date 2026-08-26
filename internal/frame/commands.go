@@ -8,10 +8,22 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
+
+var safeAppID = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+var safeArtRequests = map[string]bool{
+	"get_artmode_status":   true,
+	"get_current_artwork":  true,
+	"get_category_list":    true,
+	"get_slideshow_status": true,
+}
+
+func lanHTTPClient(timeout time.Duration) http.Client {
+	return http.Client{Timeout: timeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+}
 
 func Run(args []string) (map[string]any, error) {
 	if len(args) == 0 {
@@ -30,8 +42,8 @@ func Run(args []string) (map[string]any, error) {
 		if len(args) < 2 {
 			return nil, errors.New("configure requires an IP")
 		}
-		if net.ParseIP(args[1]) == nil {
-			return nil, errors.New("invalid IP")
+		if !isLocalTVIP(net.ParseIP(args[1])) {
+			return nil, errors.New("TV address must be a private or link-local IP")
 		}
 		info, e := getInfo(args[1])
 		if e != nil {
@@ -43,6 +55,9 @@ func Run(args []string) (map[string]any, error) {
 	}
 	if c.IP == "" {
 		return nil, errors.New("no TV configured; run discovery first")
+	}
+	if !isLocalTVIP(net.ParseIP(c.IP)) {
+		return nil, errors.New("configured TV address is not a private or link-local IP")
 	}
 	switch cmd {
 	case "status":
@@ -99,7 +114,7 @@ func capabilities() []map[string]string {
 }
 
 func listApps(c Config) (map[string]any, error) {
-	client := http.Client{Timeout: 3 * time.Second}
+	client := lanHTTPClient(3 * time.Second)
 	r, e := client.Get("http://" + c.IP + ":8001/api/v2/applications")
 	if e != nil {
 		return nil, e
@@ -125,11 +140,11 @@ func listApps(c Config) (map[string]any, error) {
 	return map[string]any{"ok": e == nil, "apps": apps}, e
 }
 func launchApp(c Config, id string) (map[string]any, error) {
-	if strings.ContainsAny(id, "/?#") || id == "" {
+	if !safeAppID.MatchString(id) {
 		return nil, errors.New("invalid app id")
 	}
 	req, _ := http.NewRequest("POST", "http://"+c.IP+":8001/api/v2/applications/"+url.PathEscape(id), nil)
-	client := http.Client{Timeout: 3 * time.Second}
+	client := lanHTTPClient(3 * time.Second)
 	r, e := client.Do(req)
 	if e != nil {
 		return nil, e
@@ -146,15 +161,15 @@ func launchApp(c Config, id string) (map[string]any, error) {
 }
 
 func artRequest(c *Config, request string, args []string) (map[string]any, error) {
+	if !safeArtRequests[request] || len(args) > 0 {
+		return nil, errors.New("unsupported Art API request")
+	}
 	w, e := connect(c, "com.samsung.art-app")
 	if e != nil {
 		return nil, e
 	}
 	defer w.Close()
 	data := map[string]any{"request": request, "id": "omarchy-frame", "request_id": "omarchy-frame"}
-	if len(args) > 0 {
-		data["value"] = args[0]
-	}
 	inner, _ := json.Marshal(data)
 	outer, _ := json.Marshal(map[string]any{"method": "ms.channel.emit", "params": map[string]any{"event": "art_app_request", "to": "host", "data": string(inner)}})
 	if e = w.writeText(outer); e != nil {

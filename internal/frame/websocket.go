@@ -31,7 +31,7 @@ func dialWS(raw string, timeout time.Duration) (*wsConn, error) {
 	d := net.Dialer{Timeout: timeout}
 	var c net.Conn
 	if u.Scheme == "wss" {
-		c, err = tls.DialWithDialer(&d, "tcp", host, &tls.Config{InsecureSkipVerify: true}) // Samsung uses a self-signed LAN certificate.
+		c, err = tls.DialWithDialer(&d, "tcp", host, &tls.Config{InsecureSkipVerify: true, MinVersion: tls.VersionTLS12}) // Samsung uses a self-signed LAN certificate.
 	} else {
 		c, err = d.Dial("tcp", host)
 	}
@@ -39,7 +39,10 @@ func dialWS(raw string, timeout time.Duration) (*wsConn, error) {
 		return nil, err
 	}
 	keyBytes := make([]byte, 16)
-	_, _ = rand.Read(keyBytes)
+	if _, err = rand.Read(keyBytes); err != nil {
+		c.Close()
+		return nil, err
+	}
 	key := base64.StdEncoding.EncodeToString(keyBytes)
 	path := u.RequestURI()
 	if path == "" {
@@ -86,7 +89,9 @@ func dialWS(raw string, timeout time.Duration) (*wsConn, error) {
 
 func (w *wsConn) writeText(payload []byte) error {
 	mask := make([]byte, 4)
-	_, _ = rand.Read(mask)
+	if _, err := rand.Read(mask); err != nil {
+		return err
+	}
 	h := []byte{0x81}
 	n := len(payload)
 	switch {
@@ -170,7 +175,9 @@ func (w *wsConn) writeControl(op byte, p []byte) error {
 		p = p[:125]
 	}
 	mask := make([]byte, 4)
-	_, _ = rand.Read(mask)
+	if _, err := rand.Read(mask); err != nil {
+		return err
+	}
 	h := []byte{0x80 | op, 0x80 | byte(len(p))}
 	h = append(h, mask...)
 	for i := range p {

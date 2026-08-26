@@ -15,7 +15,7 @@ BarWidget {
   property string page: "remote"
   function close(){popupOpen=false} function open(){popupOpen=true} function toggle(){popupOpen=!popupOpen}
   readonly property bool opened: popupOpen
-  onPopupOpenChanged:{if(service){service.panelOpen=popupOpen;if(popupOpen)service.refresh()}}
+  onPopupOpenChanged:{if(service){service.pollIntervalMs=Math.max(5,Math.min(120,Number(root.setting("pollSeconds",15))))*1000;service.panelOpen=popupOpen;if(popupOpen)service.refresh()}}
   implicitWidth: barSize; implicitHeight: barSize; opacity:service&&service.snapshot.online?1:0.6
 
   Text{anchors.centerIn:parent;text:"󰐾";color:root.bar?root.bar.barForeground:Color.foreground;font.family:root.bar?root.bar.fontFamily:Style.font.family;font.pixelSize:Style.font.body}

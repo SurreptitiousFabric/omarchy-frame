@@ -99,3 +99,7 @@ omarchy plugin validate .
 ```
 
 License: MIT.
+
+See [USER_MANUAL.md](USER_MANUAL.md) for operation and troubleshooting,
+[THREAT_MODEL.md](THREAT_MODEL.md) for the security boundary, and
+[DEVELOPMENT.md](DEVELOPMENT.md) for testing and release procedures.
