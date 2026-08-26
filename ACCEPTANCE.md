@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Source: local `main` branch after checkpoint `1ef438d`
+- Code and packaging candidate: local commit `5b3eb26`
 - Plugin: `swa.frame` 0.5.1 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -21,14 +21,14 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 76.3% on checkpoint `1ef438d` |
+| Backend statement coverage at least 75% | PASS | 75.7% backend / 75.9% repository total on `5b3eb26` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
 | QML parses and loads in Omarchy shell | PASS | Standalone lint plus live shell load |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Clean Git checkout validates and runs packaged backend | PENDING | Repeat after the final candidate commit |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `5b3eb26`; validator and race suite passed |
 | CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
 
 ## Install and shell integration
