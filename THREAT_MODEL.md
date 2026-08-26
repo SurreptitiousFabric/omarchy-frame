@@ -25,6 +25,10 @@ cannot authenticate a public CA chain.
 - Public error text redacts LAN endpoints and token query parameters.
 - TLS requires 1.2+, despite unavoidable certificate verification bypass.
 - Discovery accepts only local IPv4 Samsung records and re-verifies TV metadata.
+- Thumbnail transfer endpoints must resolve to the configured TV address;
+  ports, headers, IDs, file sizes, and item counts are validated and bounded.
+- Artwork thumbnails are cached under owner-only local state with hashed names
+  and owner-only file permissions.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

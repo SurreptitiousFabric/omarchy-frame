@@ -25,10 +25,9 @@ it as a credential.
 
 - **Remote:** navigation, Home/Back, volume, mute, channels, guide, playback,
   source, info/tools/menu, and rotation.
-- **Apps:** asks the TV for installed apps. Some firmware, including tested
-  LS03B firmware 1720.7, does not expose the list.
-- **Art:** enter Art Mode and inspect Art status, current work, categories, and
-  slideshow capability. Samsung changes this undocumented protocol by firmware.
+- **Art:** browse artwork thumbnails stored on the TV, see the current
+  selection, and choose another artwork. The TV does not provide reliable
+  titles or artist names.
 - **Setup:** discovery, manual address, approval, and stand instructions.
 - **API:** plain-language capability groups.
 
@@ -55,7 +54,6 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 | Approval never appears | Existing authorization or network block | Remove old authorized device on TV, then retry |
 | TV offline | TV asleep or address changed | Use Wake; rediscover; reserve its address |
 | Wake fails | MAC was never learned or broadcast blocked | Discover once while on; check router Wi-Fi broadcast policy |
-| Apps unavailable | Firmware omits enumeration API | Use Source/Home navigation; this is expected on 1720.7 |
 | Art request fails | Firmware changed/disabled Art socket | Ordinary remote control remains available |
 | Rotate says sent but does not move | Stand not paired | Follow the physical-remote pairing steps above |
 | “Not available” during pairing | Network remote chord rejected | A compatible physical Smart Remote is required |

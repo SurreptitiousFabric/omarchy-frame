@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "swa.frame",
   "name": "Samsung Frame",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "swa",
   "license": "MIT",
   "description": "Local, keyboard-first control for Samsung The Frame TVs and Auto Rotating Accessories",
@@ -14,7 +14,7 @@
   },
   "barWidget": {
     "displayName": "Samsung Frame",
-    "description": "Power, remote, apps, Art Mode, and Auto Rotating Stand control",
+    "description": "Power, remote, Art Mode, and Auto Rotating Stand control",
     "category": "System",
     "defaultSection": "right",
     "allowMultiple": false,

@@ -1,23 +1,24 @@
 package frame
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"regexp"
 	"strconv"
 	"time"
 )
 
-var safeAppID = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
+var safeArtID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 var safeArtRequests = map[string]bool{
 	"get_artmode_status":   true,
 	"get_current_artwork":  true,
 	"get_category_list":    true,
+	"get_content_list":     true,
 	"get_slideshow_status": true,
 }
 
@@ -27,7 +28,7 @@ func lanHTTPClient(timeout time.Duration) http.Client {
 
 func Run(args []string) (map[string]any, error) {
 	if len(args) == 0 {
-		return nil, errors.New("usage: frame-controller <discover|configure|status|key|hold|rotate|wake|apps|launch|art>")
+		return nil, errors.New("usage: frame-controller <discover|configure|status|key|hold|rotate|wake|art|gallery|select-art>")
 	}
 	c, e := loadConfig()
 	if e != nil {
@@ -91,18 +92,18 @@ func Run(args []string) (map[string]any, error) {
 	case "rotate":
 		e = sendKey(&c, "KEY_MULTI_VIEW", "hold", 3*time.Second)
 		return map[string]any{"ok": e == nil, "message": "Rotation toggled"}, e
-	case "apps":
-		return listApps(c)
-	case "launch":
-		if len(args) < 2 {
-			return nil, errors.New("launch requires app id")
-		}
-		return launchApp(c, args[1])
 	case "art":
 		if len(args) < 2 {
 			return nil, errors.New("art requires a request type")
 		}
 		return artRequest(&c, args[1], args[2:])
+	case "gallery":
+		return artGallery(&c)
+	case "select-art":
+		if len(args) != 2 {
+			return nil, errors.New("select-art requires a content id")
+		}
+		return selectArt(&c, args[1])
 	default:
 		return nil, fmt.Errorf("unknown command %q", cmd)
 	}
@@ -110,66 +111,33 @@ func Run(args []string) (map[string]any, error) {
 
 func capabilities() []map[string]string {
 	return []map[string]string{
-		{"group": "Power", "items": "Wake-on-LAN, power off, Art Mode toggle"}, {"group": "Remote", "items": "navigation, home, back, menu, numbers, color keys, tools, info"}, {"group": "Media", "items": "play, pause, stop, record, rewind, fast-forward, previous, next"}, {"group": "Sound", "items": "volume up/down, mute"}, {"group": "Channels", "items": "channel up/down, guide, channel list"}, {"group": "Sources & apps", "items": "source menu, HDMI keys where firmware accepts them, installed-app listing and launch"}, {"group": "The Frame", "items": "Art API feature detection, current art, art-mode status, available categories, slideshow/rotation requests"}, {"group": "Rotating stand", "items": "three-second Multi View hold toggles portrait/landscape on LS03B"}}
-}
-
-func listApps(c Config) (map[string]any, error) {
-	client := lanHTTPClient(3 * time.Second)
-	r, e := client.Get("http://" + c.IP + ":8001/api/v2/applications")
-	if e != nil {
-		return nil, e
-	}
-	defer r.Body.Close()
-	if r.StatusCode/100 != 2 {
-		p, err := remoteEvent(&c, "ed.installedApp.get", nil)
-		if err != nil {
-			if nerr, ok := err.(net.Error); ok && nerr.Timeout() {
-				return map[string]any{"ok": true, "supported": false, "apps": []any{}, "message": "Installed-app listing is unavailable on this TV firmware"}, nil
-			}
-			return nil, err
-		}
-		if d, ok := p["data"].(map[string]any); ok {
-			if apps, ok := d["data"].([]any); ok {
-				p["apps"] = apps
-			}
-		}
-		return p, nil
-	}
-	var apps any
-	e = json.NewDecoder(io.LimitReader(r.Body, 4<<20)).Decode(&apps)
-	return map[string]any{"ok": e == nil, "apps": apps}, e
-}
-func launchApp(c Config, id string) (map[string]any, error) {
-	if !safeAppID.MatchString(id) {
-		return nil, errors.New("invalid app id")
-	}
-	req, _ := http.NewRequest("POST", "http://"+c.IP+":8001/api/v2/applications/"+url.PathEscape(id), nil)
-	client := lanHTTPClient(3 * time.Second)
-	r, e := client.Do(req)
-	if e != nil {
-		return nil, e
-	}
-	defer r.Body.Close()
-	if r.StatusCode/100 != 2 {
-		_, err := remoteEvent(&c, "ed.apps.launch", map[string]any{"appId": id, "action_type": "DEEP_LINK"})
-		if err != nil {
-			return nil, err
-		}
-		return map[string]any{"ok": true, "message": "App launch requested"}, nil
-	}
-	return map[string]any{"ok": true, "message": "App launch requested"}, nil
+		{"group": "Power", "items": "Wake-on-LAN, power off, Art Mode toggle"}, {"group": "Remote", "items": "navigation, home, back, menu, numbers, color keys, tools, info"}, {"group": "Media", "items": "play, pause, stop, record, rewind, fast-forward, previous, next"}, {"group": "Sound", "items": "volume up/down, mute"}, {"group": "Channels", "items": "channel up/down, guide, channel list"}, {"group": "Sources", "items": "source menu and HDMI keys where firmware accepts them"}, {"group": "The Frame", "items": "browse local artwork thumbnails, show the current selection, and select artwork"}, {"group": "Rotating stand", "items": "three-second Multi View hold toggles portrait/landscape on LS03B"}}
 }
 
 func artRequest(c *Config, request string, args []string) (map[string]any, error) {
-	if !safeArtRequests[request] || len(args) > 0 {
+	if !safeArtRequests[request] {
 		return nil, errors.New("unsupported Art API request")
+	}
+	if request == "get_content_list" {
+		if len(args) != 1 || !safeArtID.MatchString(args[0]) {
+			return nil, errors.New("get_content_list requires a valid category id")
+		}
+	} else if len(args) > 0 {
+		return nil, errors.New("unsupported Art API request arguments")
 	}
 	w, e := connect(c, "com.samsung.art-app")
 	if e != nil {
 		return nil, e
 	}
 	defer w.Close()
-	data := map[string]any{"request": request, "id": "omarchy-frame", "request_id": "omarchy-frame"}
+	id, e := artRequestID()
+	if e != nil {
+		return nil, e
+	}
+	data := map[string]any{"request": request, "id": id, "request_id": id}
+	if request == "get_content_list" {
+		data["category_id"] = args[0]
+	}
 	inner, _ := json.Marshal(data)
 	outer, _ := json.Marshal(map[string]any{"method": "ms.channel.emit", "params": map[string]any{"event": "art_app_request", "to": "host", "data": string(inner)}})
 	if e = w.writeText(outer); e != nil {
@@ -188,9 +156,25 @@ func artRequest(c *Config, request string, args []string) (map[string]any, error
 		if event == "ms.channel.ready" || event == "ms.channel.connect" {
 			continue
 		}
-		return map[string]any{"ok": true, "response": payload}, nil
+		result := map[string]any{"ok": true, "response": payload}
+		if raw, ok := payload["data"].(string); ok {
+			var art map[string]any
+			if json.Unmarshal([]byte(raw), &art) == nil {
+				result["art"] = art
+			}
+		}
+		return result, nil
 	}
 	return nil, errors.New("Art API returned no response")
+}
+
+func artRequestID() (string, error) {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	// UUID-shaped IDs match Samsung's Art clients; uniqueness is what matters.
+	return hex.EncodeToString(b[0:4]) + "-" + hex.EncodeToString(b[4:6]) + "-" + hex.EncodeToString(b[6:8]) + "-" + hex.EncodeToString(b[8:10]) + "-" + hex.EncodeToString(b[10:16]), nil
 }
 
 func remoteEvent(c *Config, event string, data map[string]any) (map[string]any, error) {

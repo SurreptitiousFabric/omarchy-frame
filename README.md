@@ -8,10 +8,11 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
 
 - SSDP discovery and manual IP setup
 - One-time on-TV approval with a locally stored Samsung pairing token
+- Local artwork gallery with thumbnails, current-selection marker, and
+  click-to-select control when the Frame Art service responds
 - Power off and Wake-on-LAN
 - Navigation, volume, mute, channel, media, number, color, menu, source, and
   other Samsung remote keys
-- Installed-app discovery and launch when the TV firmware exposes the REST API
 - Art Mode entry plus feature-detected Art WebSocket requests
 - Portrait/landscape rotation using the LS03B `KEY_MULTI_VIEW` three-second hold
 - A built-in capability reference and visible errors for firmware gaps

@@ -66,7 +66,7 @@ func TestCommandValidationDoesNotTouchNetwork(t *testing.T) {
 	if _, err := Run([]string{"unknown"}); err == nil {
 		t.Fatal("expected unknown command")
 	}
-	for _, args := range [][]string{nil, {"configure"}, {"key"}, {"hold"}, {"launch"}, {"art"}} {
+	for _, args := range [][]string{nil, {"configure"}, {"key"}, {"hold"}, {"art"}, {"select-art"}} {
 		if _, err := Run(args); err == nil {
 			t.Fatalf("expected validation error for %v", args)
 		}
@@ -78,7 +78,7 @@ func TestConfiguredCommandArgumentValidation(t *testing.T) {
 	if err := saveConfig(Config{IP: "192.168.9.9"}); err != nil {
 		t.Fatal(err)
 	}
-	for _, args := range [][]string{{"key"}, {"hold"}, {"launch"}, {"art"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"}, {"launch", "../bad"}, {"art", "set_artmode_status"}, {"unknown"}} {
+	for _, args := range [][]string{{"key"}, {"hold"}, {"art"}, {"select-art"}, {"select-art", "../bad"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"}, {"art", "set_artmode_status"}, {"unknown"}} {
 		if _, err := Run(args); err == nil {
 			t.Fatalf("expected validation error for %v", args)
 		}
@@ -129,20 +129,20 @@ func TestWakePacketAndAppIDValidation(t *testing.T) {
 	if _, err := wakePacket("bad"); err == nil {
 		t.Fatal("accepted bad MAC")
 	}
-	for _, id := range []string{"org.tizen.netflix-app", "111299001912"} {
-		if !safeAppID.MatchString(id) {
+	for _, id := range []string{"SAM-F0206", "MY_F0001"} {
+		if !safeArtID.MatchString(id) {
 			t.Fatalf("rejected %q", id)
 		}
 	}
 	for _, id := range []string{"", "../bad", "bad?query", "bad space"} {
-		if safeAppID.MatchString(id) {
+		if safeArtID.MatchString(id) {
 			t.Fatalf("accepted %q", id)
 		}
 	}
 }
 
 func TestArtRequestAllowlist(t *testing.T) {
-	for _, request := range []string{"get_artmode_status", "get_current_artwork", "get_category_list", "get_slideshow_status"} {
+	for _, request := range []string{"get_artmode_status", "get_current_artwork", "get_category_list", "get_content_list", "get_slideshow_status"} {
 		if !safeArtRequests[request] {
 			t.Fatalf("missing %q", request)
 		}
@@ -152,6 +152,23 @@ func TestArtRequestAllowlist(t *testing.T) {
 	}
 	if _, err := artRequest(&Config{}, "get_artmode_status", []string{"unexpected"}); err == nil {
 		t.Fatal("accepted arguments")
+	}
+	if _, err := artRequest(&Config{}, "get_content_list", []string{"../bad"}); err == nil {
+		t.Fatal("accepted invalid category")
+	}
+}
+
+func TestArtRequestID(t *testing.T) {
+	a, err := artRequestID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := artRequestID()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(a) != 36 || a == b || strings.Count(a, "-") != 4 {
+		t.Fatalf("bad IDs %q %q", a, b)
 	}
 }
 

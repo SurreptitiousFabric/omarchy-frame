@@ -36,7 +36,7 @@ BarWidget {
         Button{text:"↻";onClicked:service&&service.refresh()}
       }
       Text{visible:service&&service.error!=="";text:service?service.error:"";color:Color.urgent;wrapMode:Text.Wrap;Layout.fillWidth:true;font.pixelSize:Style.font.caption}
-      ButtonGroup{Layout.alignment:Qt.AlignHCenter;spacing:Style.space(4);options:[{value:"remote",label:"Remote",icon:"󰒓"},{value:"apps",label:"Apps",icon:"󰀻"},{value:"art",label:"Art",icon:"󰏘"},{value:"setup",label:"Setup",icon:"󰒓"},{value:"api",label:"API",icon:"󰘦"}];value:root.page;foreground:root.panelForeground;background:"transparent";accent:Color.accent;fontFamily:root.bar.fontFamily;fontSize:Style.font.caption;onChanged:function(value){root.page=value;if(value==="apps"&&service&&!service.appsLoaded)service.loadApps()}}
+      ButtonGroup{Layout.alignment:Qt.AlignHCenter;spacing:Style.space(4);options:[{value:"remote",label:"Remote",icon:"󰒓"},{value:"art",label:"Art",icon:"󰏘"},{value:"setup",label:"Setup",icon:"󰒓"},{value:"api",label:"API",icon:"󰘦"}];value:root.page;foreground:root.panelForeground;background:"transparent";accent:Color.accent;fontFamily:root.bar.fontFamily;fontSize:Style.font.caption;onChanged:function(value){root.page=value;if(value==="art"&&service&&!service.galleryLoaded)service.loadGallery()}}
       ScrollView{id:scrollArea;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff;ScrollBar.vertical.policy:body.implicitHeight>height?ScrollBar.AsNeeded:ScrollBar.AlwaysOff
         Binding{target:scrollArea.contentItem;property:"interactive";value:body.implicitHeight>scrollArea.height}
         Column{id:body;width:scrollArea.availableWidth;spacing:Style.space(12)
@@ -54,31 +54,25 @@ BarWidget {
             Button{text:"Rotate portrait / landscape";width:parent.width;onClicked:service.rotate()}
             Text{text:"Rotation holds Multi View for 3 seconds. The Samsung stand must already be paired to the TV.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
           }
-          Column{visible:root.page==="apps";width:parent.width;spacing:Style.space(9)
-            Column{visible:service&&service.appsLoaded&&service.apps.length>0;width:parent.width;spacing:Style.space(8)
-              Text{text:"INSTALLED APPS";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
-              Repeater{model:service?service.apps:[];Button{required property var modelData;width:parent.width;text:String(modelData.name||modelData.app_name||modelData.id||"App");onClicked:service.launch(String(modelData.appId||modelData.app_id||modelData.id||""))}}
+          Column{visible:root.page==="art";width:parent.width;spacing:Style.space(9);onVisibleChanged:if(visible&&service&&!service.galleryLoaded)service.loadGallery()
+            RowLayout{width:parent.width
+              Button{text:"Enter Art Mode";Layout.fillWidth:true;onClicked:service.key("KEY_AMBIENT")}
+              Button{text:"Refresh gallery";Layout.fillWidth:true;onClicked:service.loadGallery()}
             }
-            Item{visible:!service||!service.appsLoaded||service.apps.length===0;width:parent.width;implicitHeight:280
-              Column{anchors.centerIn:parent;width:Math.min(parent.width,340);spacing:Style.space(12)
-                Text{anchors.horizontalCenter:parent.horizontalCenter;text:service&&service.appsLoaded?"󰀻":"󰐾";color:Color.accent;font.family:root.bar.fontFamily;font.pixelSize:Style.font.display}
-                Text{width:parent.width;horizontalAlignment:Text.AlignHCenter;text:!service||!service.appsLoaded?"Checking installed apps…":(!service.appsSupported?"App list unavailable":"No apps returned");color:root.panelForeground;font.pixelSize:Style.font.title;font.bold:true}
-                Text{width:parent.width;horizontalAlignment:Text.AlignHCenter;wrapMode:Text.Wrap;text:!service||!service.appsLoaded?"Asking the TV which apps it exposes on your local network.":(!service.appsSupported?"This Frame firmware does not expose its installed-app list. You can still open Samsung Home or the Source picker.":"The TV replied without any launchable apps. Use Samsung Home or the Source picker instead.");color:root.panelDim;font.pixelSize:Style.font.body}
-                RowLayout{width:parent.width;visible:service&&service.appsLoaded
-                  Button{text:"Open Home";Layout.fillWidth:true;onClicked:service.key("KEY_HOME")}
-                  Button{text:"Open Source";Layout.fillWidth:true;onClicked:service.key("KEY_SOURCE")}
+            Text{visible:service&&!service.galleryLoaded;width:parent.width;text:"Loading artwork from your TV…";horizontalAlignment:Text.AlignHCenter;color:root.panelDim;font.pixelSize:Style.font.body}
+            GridLayout{visible:service&&service.galleryLoaded;columns:2;width:parent.width;rowSpacing:Style.space(8);columnSpacing:Style.space(8)
+              Repeater{model:service?service.gallery:[]
+                Rectangle{required property var modelData;required property int index;Layout.fillWidth:true;Layout.preferredHeight:120;color:Color.background;radius:Style.cornerRadius;border.width:String(modelData.id)===service.selectedArtID?2:1;border.color:String(modelData.id)===service.selectedArtID?Color.accent:root.panelDim
+                  Image{anchors.fill:parent;anchors.margins:4;source:modelData.image?"file://"+String(modelData.image):"";fillMode:Image.PreserveAspectCrop;asynchronous:true;cache:true}
+                  Text{visible:!modelData.image;anchors.centerIn:parent;text:"󰏘\nArtwork "+(index+1);horizontalAlignment:Text.AlignHCenter;color:root.panelDim;font.family:root.bar.fontFamily}
+                  Rectangle{visible:String(modelData.id)===service.selectedArtID;anchors.right:parent.right;anchors.top:parent.top;anchors.margins:6;width:24;height:24;radius:12;color:Color.accent
+                    Text{anchors.centerIn:parent;text:"✓";color:Color.background;font.bold:true}
+                  }
+                  MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:service.selectArt(modelData.id)}
                 }
-                Button{anchors.horizontalCenter:parent.horizontalCenter;visible:service&&service.appsLoaded;text:"Check again";onClicked:service.loadApps()}
               }
             }
-          }
-          Column{visible:root.page==="art";width:parent.width;spacing:Style.space(9)
-            Repeater{model:[{"t":"Toggle TV / Art Mode","k":"KEY_POWER"},{"t":"Enter Art Mode","k":"KEY_AMBIENT"}];Button{required property var modelData;width:parent.width;text:modelData.t;onClicked:service.key(modelData.k)}}
-            Button{text:"Read Art Mode status";width:parent.width;onClicked:service.art("get_artmode_status")}
-            Button{text:"Read current artwork";width:parent.width;onClicked:service.art("get_current_artwork")}
-            Button{text:"Read available categories";width:parent.width;onClicked:service.art("get_category_list")}
-            Button{text:"Read slideshow status";width:parent.width;onClicked:service.art("get_slideshow_status")}
-            Text{text:"Samsung has changed the Art WebSocket between firmware releases. Unsupported requests fail visibly and never disable ordinary remote control.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim}
+            Text{visible:service&&service.galleryLoaded;width:parent.width;text:"The TV provides pictures and dates, but not reliable artwork titles or artist names.";wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
           }
           Column{visible:root.page==="setup";width:parent.width;spacing:Style.space(9)
             Button{text:"Discover Frame TVs";width:parent.width;onClicked:service.discover()}
