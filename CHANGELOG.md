@@ -29,6 +29,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 - Use Omarchy's native panel lifecycle and controller so bar clicks, shell IPC,
   multi-monitor routing, focus, and popup switching share one state model;
   per-instance IPC is disabled so duplicate monitor copies cannot race.
+- Add wraparound keyboard focus across visible controls, automatic scrolling to
+  focused gallery items, focused-control activation, and direct text-entry mode
+  for manual address editing.
 
 ### Changed
 

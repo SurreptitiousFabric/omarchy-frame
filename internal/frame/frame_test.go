@@ -175,6 +175,10 @@ func TestBarWidgetUsesNativePanelLifecycle(t *testing.T) {
 		"manageIpc: false",
 		"onOpenedChanged:",
 		"open: root.opened",
+		"onTabRequested: direction => root.moveControlFocus(direction)",
+		"onActivateRequested: root.activateFocusedControl()",
+		"revealControl(controls[next])",
+		"blocked: deleteConfirm.opened || setupPage.editorActive",
 	} {
 		if !strings.Contains(source, contract) {
 			t.Fatalf("native panel contract missing %q", contract)

@@ -14,6 +14,8 @@ Rectangle {
     signal selected(string id)
     signal deleteRequested(string id)
 
+    function activate() { selected(String(item.id)) }
+
     Layout.fillWidth: true
     Layout.preferredHeight: 138
     activeFocusOnTab: true
@@ -27,15 +29,15 @@ Rectangle {
     Accessible.description: String(item.id) === selectedID ? "Currently displayed on the television" : "Display this item on the television"
 
     Keys.onReturnPressed: event => {
-        card.selected(String(card.item.id));
+        card.activate();
         event.accepted = true;
     }
     Keys.onEnterPressed: event => {
-        card.selected(String(card.item.id));
+        card.activate();
         event.accepted = true;
     }
     Keys.onSpacePressed: event => {
-        card.selected(String(card.item.id));
+        card.activate();
         event.accepted = true;
     }
 

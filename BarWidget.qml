@@ -55,6 +55,70 @@ Panel {
         return 400;
     }
 
+    function appendFocusable(item, result) {
+        if (!item || item.visible === false || item.enabled === false)
+            return;
+        if (item !== keyCatcher && item.activeFocusOnTab === true)
+            result.push(item);
+        var descendants = item.children || [];
+        for (var i = 0; i < descendants.length; i++)
+            appendFocusable(descendants[i], result);
+    }
+
+    function focusableControls() {
+        var result = [];
+        appendFocusable(content, result);
+        return result;
+    }
+
+    function revealControl(control) {
+        if (!control || !body || !scrollArea || !scrollArea.contentItem)
+            return;
+        var ancestor = control;
+        while (ancestor && ancestor !== body)
+            ancestor = ancestor.parent;
+        if (ancestor !== body)
+            return;
+        var position = control.mapToItem(body, 0, 0);
+        var flickable = scrollArea.contentItem;
+        var top = position.y;
+        var bottom = top + control.height;
+        if (top < flickable.contentY)
+            flickable.contentY = Math.max(0, top);
+        else if (bottom > flickable.contentY + flickable.height)
+            flickable.contentY = Math.min(Math.max(0, flickable.contentHeight - flickable.height), bottom - flickable.height);
+    }
+
+    function moveControlFocus(direction) {
+        var controls = focusableControls();
+        if (controls.length === 0)
+            return;
+        var current = -1;
+        for (var i = 0; i < controls.length; i++) {
+            if (controls[i].activeFocus) {
+                current = i;
+                break;
+            }
+        }
+        var next = current < 0 ? (direction < 0 ? controls.length - 1 : 0) : (current + (direction < 0 ? -1 : 1) + controls.length) % controls.length;
+        controls[next].forceActiveFocus(Qt.TabFocusReason);
+        revealControl(controls[next]);
+    }
+
+    function activateFocusedControl() {
+        var controls = focusableControls();
+        for (var i = 0; i < controls.length; i++) {
+            var control = controls[i];
+            if (!control.activeFocus)
+                continue;
+            if (typeof control.activate === "function")
+                control.activate();
+            else if (typeof control.clicked === "function")
+                control.clicked();
+            return;
+        }
+    }
+
     Component {
         id: frameIcon
         FrameTvIcon {
@@ -156,7 +220,10 @@ Panel {
         PanelKeyCatcher {
             id: keyCatcher
             anchors.fill: parent
-            blocked: deleteConfirm.opened
+            blocked: deleteConfirm.opened || setupPage.editorActive
+            onMoveRequested: function(dx, dy) { root.moveControlFocus(dx + dy < 0 ? -1 : 1) }
+            onActivateRequested: root.activateFocusedControl()
+            onTabRequested: direction => root.moveControlFocus(direction)
             onCloseRequested: root.close()
         }
 

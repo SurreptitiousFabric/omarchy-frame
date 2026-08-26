@@ -15,6 +15,7 @@ Column {
     required property string uiFont
     property bool manualSetupOpen: false
     property bool capabilitiesOpen: false
+    readonly property bool editorActive: ipField.activeFocus
 
     function reset() {
         manualSetupOpen = false
