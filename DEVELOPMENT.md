@@ -18,6 +18,7 @@ go fmt ./...
 go test -race -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out
 go vet ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 scripts/build-release.sh
 scripts/test-packaged-runtime.sh
 scripts/test-repository-policy.sh
@@ -37,6 +38,7 @@ the tests never listen beyond `127.0.0.1`.
 
 - Working tree and `git diff --check` clean
 - Tests, race detector, vet, manifest validation, and QML runtime load pass
+- Official Go vulnerability analysis reports no reachable vulnerability
 - Coverage reviewed by function; security/protocol paths cannot regress silently
 - Backend statement coverage remains at least 75%; hardware-only wrappers are
   exercised by the live acceptance matrix
@@ -51,6 +53,8 @@ the tests never listen beyond `127.0.0.1`.
 - `ACCEPTANCE.md` matches the exact release candidate and has no unexplained
   pending applicable check
 - Publication and marketplace submission performed only with owner approval
+- Current marketplace baseline result and any review capabilities are recorded
+  against the exact candidate commit
 
 ## Versioning
 

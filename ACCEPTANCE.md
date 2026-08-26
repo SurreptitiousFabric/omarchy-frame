@@ -28,8 +28,10 @@ image, or raw TV response belongs in this file.
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `0e14e31` |
 | Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `0e14e31`; race, vet, manifest, repository policy, checksum, and no-Go runtime gates passed |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
+| Marketplace static security baseline | PASS | Current engine on exact `0e14e31`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
 | CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
 
 ## Install and shell integration
