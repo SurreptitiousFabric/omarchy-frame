@@ -23,8 +23,9 @@ it as a credential.
 
 ## Pages
 
-- **Remote:** choose Navigate, Sound, Media, or TV. Only that task's controls
-  are shown. Navigate opens by default whenever the panel is reopened.
+- **Remote:** choose Navigate, Sound, Media, or More. Only that task's controls
+  are shown. Navigate opens by default whenever the panel is reopened, and
+  short pages shrink so the panel does not leave a large empty area.
 - **Art:** enter Art Mode, browse artwork previews, and select artwork. Entries
   without a usable TV-provided preview are omitted.
 - **Photos:** upload a local JPEG/PNG into **My Photos**, select personal
