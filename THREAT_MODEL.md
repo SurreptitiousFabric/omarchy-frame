@@ -33,6 +33,8 @@ cannot authenticate a public CA chain.
 - Uploads accept only an explicitly selected absolute local file URL/path, open
   it without invoking a shell, require a regular JPEG/PNG by signature, and cap
   it at 20 MB. The TV-provided upload endpoint is pinned to the configured TV.
+- The image picker executes the fixed `/usr/bin/zenity` path with a fixed
+  argument vector and reads only its selected-path output; no shell is invoked.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

@@ -28,6 +28,8 @@ it as a credential.
 - **Art:** browse artwork thumbnails stored on the TV, choose another artwork,
   upload a local JPEG/PNG into **My Photos**, and start or stop a My Photos
   slideshow. The TV does not provide reliable titles or artist names.
+  The upload chooser runs separately from the bar so a desktop file-dialog
+  failure cannot terminate the Omarchy shell.
 - **Setup:** discovery, manual address, approval, and stand instructions.
 - **API:** plain-language capability groups.
 

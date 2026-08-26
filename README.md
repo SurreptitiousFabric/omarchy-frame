@@ -80,7 +80,9 @@ you want to revoke its token.
 ## Security and limitations
 
 Omarchy plugins run unsandboxed. This plugin spawns only its bundled backend.
-The backend accepts fixed commands, validates IP addresses, remote key names,
+The QML UI launches the installed Zenity file chooser as a separate process so
+a desktop-portal fault cannot crash the shell. The backend accepts fixed
+commands, validates IP addresses, remote key names,
 hold durations, image signatures and sizes, limits network response sizes, and
 never opens a listening port. Upload transfer endpoints are pinned to the
 configured TV. Samsung uses a self-signed certificate on the local secure TV

@@ -1,8 +1,8 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import Quickshell
+import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
@@ -16,7 +16,16 @@ BarWidget {
   property string page: "remote"
   function close(){popupOpen=false} function open(){popupOpen=true} function toggle(){popupOpen=!popupOpen}
   readonly property bool opened: popupOpen
-  FileDialog{id:photoPicker;title:"Upload a photo to The Frame";nameFilters:["Images (*.jpg *.jpeg *.png)"];onAccepted:if(service)service.uploadArt(selectedFile)}
+  Process {
+    id: photoPicker
+    command: ["/usr/bin/zenity", "--file-selection", "--title=Upload a photo to The Frame", "--file-filter=Images | *.jpg *.jpeg *.png"]
+    stdout: StdioCollector { id: photoPickerOut; waitForEnd: true }
+    onExited: function(code) {
+      var path = String(photoPickerOut.text || "").trim()
+      if (code === 0 && path !== "" && service)
+        service.uploadArt(path)
+    }
+  }
   onPopupOpenChanged:{if(service){service.pollIntervalMs=Math.max(5,Math.min(120,Number(root.setting("pollSeconds",15))))*1000;service.panelOpen=popupOpen;if(popupOpen)service.refresh()}}
   implicitWidth: barSize; implicitHeight: barSize; opacity:service&&service.snapshot.online?1:0.6
 
@@ -61,7 +70,7 @@ BarWidget {
               Button{text:"Enter Art Mode";Layout.fillWidth:true;onClicked:service.key("KEY_AMBIENT")}
               Button{text:"Refresh gallery";Layout.fillWidth:true;onClicked:service.loadGallery()}
             }
-            Button{text:"＋ Upload your photo";width:parent.width;onClicked:photoPicker.open()}
+            Button{text:"＋ Upload your photo";width:parent.width;enabled:!photoPicker.running;onClicked:photoPicker.running=true}
             Text{text:"MY PHOTOS SLIDESHOW";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
             RowLayout{width:parent.width
               Button{text:"5 min shuffle";Layout.fillWidth:true;onClicked:service.slideshow(5,true)}
