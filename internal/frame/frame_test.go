@@ -172,7 +172,7 @@ func TestBarWidgetUsesNativePanelLifecycle(t *testing.T) {
 	source := string(body)
 	for _, contract := range []string{
 		"Panel {",
-		"ipcTarget: \"swa.frame\"",
+		"manageIpc: false",
 		"onOpenedChanged:",
 		"open: root.opened",
 	} {

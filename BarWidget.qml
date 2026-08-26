@@ -13,7 +13,7 @@ Panel {
     id: root
 
     moduleName: "swa.frame"
-    ipcTarget: "swa.frame"
+    manageIpc: false
 
     readonly property var service: bar && bar.shell ? bar.shell.serviceFor("swa.frame") : null
     readonly property int barSize: bar ? bar.barSize : Style.bar.sizeHorizontal
