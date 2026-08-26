@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const avahiBrowsePath = "/usr/bin/avahi-browse"
+
 var safeClickKeys = map[string]struct{}{
 	"KEY_CAPTION":   {},
 	"KEY_CHDOWN":    {},
@@ -272,7 +274,7 @@ func discover() ([]Config, error) {
 func discoverAvahi() []Config {
 	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
 	defer cancel()
-	b, err := exec.CommandContext(ctx, "avahi-browse", "-rtp", "_airplay._tcp").Output()
+	b, err := exec.CommandContext(ctx, avahiBrowsePath, "-rtp", "_airplay._tcp").Output()
 	if err != nil && len(b) == 0 {
 		return nil
 	}

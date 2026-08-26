@@ -23,7 +23,8 @@ cannot authenticate a public CA chain.
   Power and Multi View; service, factory, reset, and unknown keys are rejected
   before a TV connection is opened.
 - Pairing state is atomically written in an owner-only directory/file.
-- Public JSON never serializes the token; regression tests enforce this.
+- Routine status/configuration JSON contains only display name/model and never
+  serializes the token, private IP, or MAC; regression tests enforce this.
 - Public error text redacts LAN endpoints and token query parameters.
 - TLS requires 1.2+, despite unavoidable certificate verification bypass.
 - Discovery accepts only local IPv4 Samsung records and re-verifies TV metadata.
@@ -46,6 +47,7 @@ cannot authenticate a public CA chain.
   and reject masked server frames, unsupported opcodes, and malformed controls.
 - Held keys retry Release before the connection closes if the first release
   write fails.
+- Optional mDNS fallback executes only the fixed `/usr/bin/avahi-browse` path.
 - No listener, cloud service, shell interpolation, privileged command, install
   hook, telemetry, or automatic deletion is used.
 

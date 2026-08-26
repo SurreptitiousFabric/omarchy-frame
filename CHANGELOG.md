@@ -14,6 +14,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
   short writes, transfer bounds, and held-key release behavior.
 - Bound thumbnail batches and cache storage to 64 MB and prune only
   plugin-generated hashed files.
+- Remove private IP/MAC fields from routine status/configuration JSON, enforce
+  owner-only state file/directory permissions, reject symlinked state, and pin
+  the optional Avahi helper to `/usr/bin/avahi-browse`.
 
 ### Fixed
 

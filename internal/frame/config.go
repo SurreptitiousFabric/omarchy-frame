@@ -32,7 +32,7 @@ type Config struct {
 }
 
 func (c Config) public() map[string]string {
-	return map[string]string{"ip": c.IP, "mac": c.MAC, "name": c.Name, "model": c.Model}
+	return map[string]string{"name": c.Name, "model": c.Model}
 }
 
 func configPath() string {
@@ -48,10 +48,24 @@ func configPath() string {
 }
 
 func loadConfig() (Config, error) {
-	b, err := os.ReadFile(configPath())
+	p := configPath()
+	if err := requirePrivateStateDir(filepath.Dir(p)); err != nil && !errors.Is(err, os.ErrNotExist) {
+		return Config{}, err
+	}
+	info, err := os.Lstat(p)
 	if errors.Is(err, os.ErrNotExist) {
 		return Config{}, nil
 	}
+	if err != nil {
+		return Config{}, err
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+		return Config{}, errors.New("TV state must be a regular file")
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		return Config{}, errors.New("TV state permissions must be owner-only")
+	}
+	b, err := os.ReadFile(p)
 	if err != nil {
 		return Config{}, err
 	}
@@ -68,7 +82,11 @@ func saveConfig(c Config) error {
 		return errors.New("TV address must be a private or link-local IP")
 	}
 	p := configPath()
-	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+	dirPath := filepath.Dir(p)
+	if err := os.MkdirAll(dirPath, 0700); err != nil {
+		return err
+	}
+	if err := requirePrivateStateDir(dirPath); err != nil {
 		return err
 	}
 	b, err := json.MarshalIndent(c, "", "  ")
@@ -103,7 +121,7 @@ func saveConfig(c Config) error {
 		return err
 	}
 	keep = true
-	dir, err := os.Open(filepath.Dir(p))
+	dir, err := os.Open(dirPath)
 	if err != nil {
 		return err
 	}
@@ -113,6 +131,20 @@ func saveConfig(c Config) error {
 		return err
 	}
 	return closeErr
+}
+
+func requirePrivateStateDir(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return errors.New("TV state parent must be a directory")
+	}
+	if info.Mode().Perm()&0077 != 0 {
+		return errors.New("TV state directory permissions must be owner-only")
+	}
+	return nil
 }
 
 func isLocalTVIP(ip net.IP) bool {

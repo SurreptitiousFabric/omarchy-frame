@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -326,7 +325,7 @@ func TestRemoteURLAndAvahiParser(t *testing.T) {
 }
 
 func TestCompletePairingPersistsNewToken(t *testing.T) {
-	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+	t.Setenv("OMARCHY_FRAME_CONFIG", privateConfigPath(t))
 	client, server := net.Pipe()
 	defer client.Close()
 	defer server.Close()

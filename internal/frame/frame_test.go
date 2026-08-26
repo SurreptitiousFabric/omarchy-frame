@@ -18,6 +18,15 @@ import (
 	"time"
 )
 
+func privateConfigPath(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "state")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	return filepath.Join(dir, "config.json")
+}
+
 func TestConfigRoundTripAndPermissions(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "state", "config.json")
 	t.Setenv("OMARCHY_FRAME_CONFIG", p)
@@ -33,9 +42,13 @@ func TestConfigRoundTripAndPermissions(t *testing.T) {
 		t.Fatalf("got %#v, want %#v", got, want)
 	}
 	if runtime.GOOS != "windows" {
-		info, _ := os.Stat(p)
-		if info.Mode().Perm() != 0600 {
-			t.Fatalf("mode %o", info.Mode().Perm())
+		fileInfo, _ := os.Stat(p)
+		if fileInfo.Mode().Perm() != 0600 {
+			t.Fatalf("file mode %o", fileInfo.Mode().Perm())
+		}
+		dirInfo, _ := os.Stat(filepath.Dir(p))
+		if dirInfo.Mode().Perm() != 0700 {
+			t.Fatalf("directory mode %o", dirInfo.Mode().Perm())
 		}
 	}
 }
@@ -267,10 +280,66 @@ func TestHeldKeyAlwaysAttemptsRelease(t *testing.T) {
 	}
 }
 
-func TestPublicConfigNeverContainsToken(t *testing.T) {
-	p := Config{IP: "192.168.1.2", Token: "secret", Name: "Frame"}.public()
-	if _, exists := p["token"]; exists {
-		t.Fatal("public config exposed token")
+func TestPublicConfigContainsOnlyDisplayMetadata(t *testing.T) {
+	p := Config{IP: "192.168.1.2", Token: "secret", MAC: "00:11:22:33:44:55", Name: "Frame", Model: "LS03B"}.public()
+	if len(p) != 2 || p["name"] != "Frame" || p["model"] != "LS03B" {
+		t.Fatalf("public config exposed private fields: %#v", p)
+	}
+}
+
+func TestConfigRejectsUnsafeStateFiles(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "state")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(dir, "config.json")
+	t.Setenv("OMARCHY_FRAME_CONFIG", p)
+	valid := []byte(`{"ip":"192.168.1.2"}`)
+	if err := os.WriteFile(p, valid, 0644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "owner-only") {
+		t.Fatalf("accepted permissive state: %v", err)
+	}
+	if err := os.Remove(p); err != nil {
+		t.Fatal(err)
+	}
+	target := filepath.Join(dir, "target.json")
+	if err := os.WriteFile(target, valid, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(target, p); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "regular file") {
+		t.Fatalf("accepted symlinked state: %v", err)
+	}
+}
+
+func TestConfigRejectsUnsafeStateDirectoryWithoutChangingIt(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "shared")
+	if err := os.Mkdir(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(dir, "config.json"))
+	if err := saveConfig(Config{IP: "192.168.1.2"}); err == nil || !strings.Contains(err.Error(), "directory permissions") {
+		t.Fatalf("accepted permissive state directory: %v", err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0755 {
+		t.Fatalf("state directory was mutated: mode=%v", info.Mode().Perm())
+	}
+}
+
+func TestDiscoveryUsesFixedAvahiPath(t *testing.T) {
+	if avahiBrowsePath != "/usr/bin/avahi-browse" {
+		t.Fatalf("discovery helper is not fixed: %q", avahiBrowsePath)
 	}
 }
 
@@ -317,7 +386,7 @@ func TestCommandValidationDoesNotTouchNetwork(t *testing.T) {
 }
 
 func TestConfigureValidationCanRecoverFromMalformedConfig(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "config.json")
+	p := privateConfigPath(t)
 	t.Setenv("OMARCHY_FRAME_CONFIG", p)
 	if err := os.WriteFile(p, []byte("{"), 0600); err != nil {
 		t.Fatal(err)
@@ -359,7 +428,7 @@ func TestConcurrentConfigWritesRemainValid(t *testing.T) {
 }
 
 func TestConfiguredCommandArgumentValidation(t *testing.T) {
-	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(t.TempDir(), "config.json"))
+	t.Setenv("OMARCHY_FRAME_CONFIG", privateConfigPath(t))
 	if err := saveConfig(Config{IP: "192.168.9.9"}); err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +451,7 @@ func TestConfiguredCommandArgumentValidation(t *testing.T) {
 }
 
 func TestCommandRejectsTamperedPublicAddress(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "config.json")
+	p := privateConfigPath(t)
 	t.Setenv("OMARCHY_FRAME_CONFIG", p)
 	b, _ := json.Marshal(Config{IP: "8.8.8.8"})
 	if err := os.WriteFile(p, b, 0600); err != nil {
@@ -394,7 +463,7 @@ func TestCommandRejectsTamperedPublicAddress(t *testing.T) {
 }
 
 func TestConfigMissingMalformedAndTrimmed(t *testing.T) {
-	p := filepath.Join(t.TempDir(), "config.json")
+	p := privateConfigPath(t)
 	t.Setenv("OMARCHY_FRAME_CONFIG", p)
 	if got, err := loadConfig(); err != nil || got != (Config{}) {
 		t.Fatalf("missing: %#v %v", got, err)
