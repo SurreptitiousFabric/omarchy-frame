@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "swa.frame",
   "name": "Samsung Frame",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "author": "swa",
   "license": "MIT",
   "description": "Local, keyboard-first control for Samsung The Frame TVs and Auto Rotating Accessories",

@@ -245,7 +245,7 @@ BarWidget {
 
     Text {
         anchors.centerIn: parent
-        text: "󰐾"
+        text: "󰒄"
         color: root.bar ? root.bar.barForeground : Color.foreground
         font.family: root.iconFont
         font.pixelSize: Style.font.body
