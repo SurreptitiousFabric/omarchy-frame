@@ -34,7 +34,8 @@ image, or raw TV response belongs in this file.
 | Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `55e95e7`; race, vet, vulnerability, QML runtime, manifest, repository policy, checksum, and no-Go gates passed |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
 | Marketplace static security baseline | PASS | Current engine on exact `55e95e7`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
-| CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
+| CI workflow executes remotely | PASS | GitHub Actions run `33003748420` passed on public `main` at `de6903b` |
+| Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
 
 ## Install and shell integration
 
@@ -79,7 +80,7 @@ image, or raw TV response belongs in this file.
 
 ## Release decision
 
-Do not tag `v1.0.0`, publish a repository, submit to the marketplace, or mark
-this matrix complete until every applicable **PENDING** row is passed or the
-owner explicitly removes that capability from the product scope. If a preview
-is added later, publication also requires approval of that exact image.
+Do not tag `v1.0.0`, submit to the marketplace, or mark this matrix complete
+until every applicable **PENDING** row is passed or the owner explicitly removes
+that capability from the product scope. If a preview is added later,
+marketplace submission also requires approval of that exact image.
