@@ -83,7 +83,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 
 ## Remove and revoke
 
-Run `omarchy plugin remove swa.frame`. To forget local state, remove only
+Run `omarchy plugin remove io.github.surreptitiousfabric.omarchy-frame`. To forget local state, remove only
 `~/.local/state/omarchy-frame/`. Also revoke **Omarchy Frame** in the TV's
 authorized-device settings. Removing the plugin does not deliberately delete
 credentials without asking.

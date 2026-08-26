@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/swa/omarchy-frame/internal/frame"
+	"github.com/SurreptitiousFabric/omarchy-frame/internal/frame"
 )
 
 func main() {

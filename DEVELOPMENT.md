@@ -20,6 +20,7 @@ go tool cover -func=coverage.out
 go vet ./...
 scripts/build-release.sh
 scripts/test-packaged-runtime.sh
+scripts/test-repository-policy.sh
 omarchy plugin validate .
 ```
 

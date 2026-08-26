@@ -29,10 +29,11 @@ cloud service.
 
 ## Install
 
-This repository must include release binaries before installation. Then run:
+The public repository includes release binaries, so installation does not need
+Go. Install and enable it with:
 
 ```bash
-omarchy plugin add https://github.com/OWNER/omarchy-frame.git --enable
+omarchy plugin add https://github.com/SurreptitiousFabric/omarchy-frame.git --enable
 ```
 
 For local development, build and commit the working tree, then use Omarchy's
@@ -44,6 +45,14 @@ omarchy plugin add file:///absolute/path/to/omarchy-frame --enable
 
 An existing plugin with the same ID must be removed or updated first. Omarchy
 backs up an unmanaged plugin folder when it is removed.
+
+### Upgrading from the pre-0.6 beta
+
+The permanent marketplace ID replaced the local beta ID `swa.frame`. Remove
+that beta checkout, then install the namespaced plugin using the command above.
+The owner-only pairing state remains at `~/.local/state/omarchy-frame`, so this
+does not require pairing again. Omarchy preserves unmanaged source as a backup;
+Git-managed beta checkouts remain recoverable from their source repository.
 
 On the first command, approve **Omarchy Frame** on the television. The pairing
 token is saved as `~/.local/state/omarchy-frame/config.json` with mode `0600`.
@@ -83,7 +92,7 @@ bin/frame-controller capabilities
 ## Remove
 
 ```bash
-omarchy plugin remove swa.frame
+omarchy plugin remove io.github.surreptitiousfabric.omarchy-frame
 ```
 
 The uninstall command removes the plugin checkout but deliberately preserves
@@ -120,7 +129,8 @@ because the LS03B API does not report a reliable physical orientation state.
 
 The repository layout follows the Omarchy marketplace contract: one plugin,
 root manifest, README, license, no symlinks or install hooks, documented
-dependencies/removal, and an optional root `preview.png`. Validate with:
+dependencies/removal, and an intentionally omitted optional preview. Validate
+with:
 
 ```bash
 omarchy plugin validate .

@@ -1,3 +1,3 @@
-module github.com/swa/omarchy-frame
+module github.com/SurreptitiousFabric/omarchy-frame
 
 go 1.27.0

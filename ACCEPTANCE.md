@@ -8,7 +8,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 ## Candidate
 
 - Code and packaging candidate: local commit `24dcc2b`
-- Plugin: `swa.frame` 0.5.1 (pre-1.0)
+- Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
 - Date: 2026-08-26
@@ -41,7 +41,7 @@ image, or raw TV response belongs in this file.
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Reinstall preserves owner-only TV state | PASS | Existing authorization remained usable after reinstall |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher test showed themed focus, focused-monitor routing, and Escape dismissal after focus moved into a control |
-| Optional marketplace preview approved for publication | PENDING | No image has been approved for a public listing |
+| Optional marketplace preview | N/A | Intentionally omitted; the marketplace permits repositories without one |
 
 ## Live LS03B behavior
 
@@ -76,6 +76,5 @@ image, or raw TV response belongs in this file.
 
 Do not tag `v1.0.0`, publish a repository, submit to the marketplace, or mark
 this matrix complete until every applicable **PENDING** row is passed or the
-owner explicitly removes that capability from the product scope. Publication
-also requires replacing placeholder repository links and approving the exact
-preview image, if one is included.
+owner explicitly removes that capability from the product scope. If a preview
+is added later, publication also requires approval of that exact image.

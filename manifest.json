@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "swa.frame",
+  "id": "io.github.surreptitiousfabric.omarchy-frame",
   "name": "Samsung Frame",
-  "version": "0.5.1",
-  "author": "swa",
+  "version": "0.6.0",
+  "author": "SurreptitiousFabric",
   "license": "MIT",
   "description": "Local, keyboard-first control for Samsung The Frame TVs and Auto Rotating Accessories",
   "kinds": ["service", "bar-widget"],

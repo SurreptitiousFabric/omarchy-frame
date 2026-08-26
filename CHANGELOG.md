@@ -35,6 +35,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 ### Changed
 
+- Adopt the permanent marketplace ID
+  `io.github.surreptitiousfabric.omarchy-frame`, align the author namespace,
+  and resolve the bundled backend from Omarchy's injected plugin source path.
 - Split the panel into focused Remote, Art, Photos, Setup, gallery-card, and TV
   icon QML components.
 - Draw the plugin identity as a theme-aware retro antenna television so it is

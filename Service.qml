@@ -5,8 +5,10 @@ import Quickshell.Io
 Item {
   id: root
   property var shell: null
-  readonly property string pluginPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/swa.frame"
-  readonly property string backend: pluginPath + "/bin/frame-controller"
+  property var manifest: null
+  readonly property string pluginPath: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) : ""
+  readonly property string backend: pluginPath === "" ? "" : pluginPath + "/bin/frame-controller"
+  property bool initialized: false
   property var snapshot: ({ok: false, online: false, mode: "unknown", device: {}})
   property var devices: []
   property var gallery: []
@@ -36,6 +38,10 @@ Item {
   }
 
   function run(args, success) {
+    if (backend === "") {
+      error = "Controller is still loading"
+      return
+    }
     if (actionProcess.running) {
       if (pending.length >= 20) {
         error = "Too many queued commands"
@@ -57,14 +63,14 @@ Item {
   }
 
   function refresh() {
-    if (!statusProcess.running) {
+    if (backend !== "" && !statusProcess.running) {
       statusProcess.command = [backend, "status"]
       statusProcess.running = true
     }
   }
 
   function discover() {
-    if (!discoverProcess.running) {
+    if (backend !== "" && !discoverProcess.running) {
       error = ""
       message = "Searching your network…"
       discoverProcess.command = [backend, "discover"]
@@ -98,6 +104,13 @@ Item {
     artGallery = arts
     photosGallery = photos
     galleryLoaded = true
+  }
+
+  function initialize() {
+    if (initialized || backend === "")
+      return
+    initialized = true
+    refresh()
   }
   function selectArt(id) {
     selectedArtID = String(id)
@@ -192,5 +205,6 @@ Item {
     onTriggered: if (root.panelOpen) root.refresh()
   }
 
-  Component.onCompleted: refresh()
+  onBackendChanged: Qt.callLater(root.initialize)
+  Component.onCompleted: Qt.callLater(root.initialize)
 }

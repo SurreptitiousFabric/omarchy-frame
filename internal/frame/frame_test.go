@@ -192,6 +192,52 @@ func TestBarWidgetUsesNativePanelLifecycle(t *testing.T) {
 	}
 }
 
+func TestPluginIdentityAndServicePathContract(t *testing.T) {
+	manifestBody, err := os.ReadFile("../../manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var manifest struct {
+		ID      string `json:"id"`
+		Version string `json:"version"`
+		Author  string `json:"author"`
+	}
+	if err := json.Unmarshal(manifestBody, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	const pluginID = "io.github.surreptitiousfabric.omarchy-frame"
+	if manifest.ID != pluginID || manifest.Version != "0.6.0" || manifest.Author != "SurreptitiousFabric" {
+		t.Fatalf("unexpected release identity: %#v", manifest)
+	}
+
+	barBody, err := os.ReadFile("../../BarWidget.qml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(barBody), pluginID) != 2 {
+		t.Fatalf("bar/service identity references drifted: %q", pluginID)
+	}
+
+	serviceBody, err := os.ReadFile("../../Service.qml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := string(serviceBody)
+	for _, contract := range []string{
+		"property var manifest: null",
+		"manifest && manifest.__sourceDir",
+		"if (initialized || backend === \"\")",
+		"onBackendChanged: Qt.callLater(root.initialize)",
+	} {
+		if !strings.Contains(service, contract) {
+			t.Fatalf("service source-path contract missing %q", contract)
+		}
+	}
+	if strings.Contains(service, "/.config/omarchy/plugins/") {
+		t.Fatal("service hardcodes an installed plugin directory")
+	}
+}
+
 func TestHeldKeyAlwaysAttemptsRelease(t *testing.T) {
 	var actions []string
 	failedRelease := true

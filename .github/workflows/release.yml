@@ -26,7 +26,6 @@ jobs:
         run: |
           version=$(jq -r .version manifest.json)
           [[ $GITHUB_REF_NAME == "v$version" ]]
-          ! grep -R "github.com/OWNER" README.md SECURITY.md
 
       - name: Test and build
         run: |
@@ -34,6 +33,7 @@ jobs:
           go vet ./...
           scripts/build-release.sh
           scripts/validate-repository.sh
+          scripts/test-repository-policy.sh
 
       - name: Create GitHub release
         env:

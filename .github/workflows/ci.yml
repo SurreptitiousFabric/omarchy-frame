@@ -47,7 +47,9 @@ jobs:
         run: scripts/build-release.sh
 
       - name: Validate repository and checksums
-        run: scripts/validate-repository.sh
+        run: |
+          scripts/validate-repository.sh
+          scripts/test-repository-policy.sh
 
       - name: Package CI artifact
         run: tar -C bin -czf omarchy-frame-linux.tar.gz frame-controller frame-controller-linux-amd64 frame-controller-linux-arm64 SHA256SUMS

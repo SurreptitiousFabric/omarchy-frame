@@ -12,10 +12,10 @@ import "components"
 Panel {
     id: root
 
-    moduleName: "swa.frame"
+    moduleName: "io.github.surreptitiousfabric.omarchy-frame"
     manageIpc: false
 
-    readonly property var service: bar && bar.shell ? bar.shell.serviceFor("swa.frame") : null
+    readonly property var service: bar && bar.shell ? bar.shell.serviceFor("io.github.surreptitiousfabric.omarchy-frame") : null
     readonly property int barSize: bar ? bar.barSize : Style.bar.sizeHorizontal
     readonly property color panelForeground: bar ? bar.foreground : Color.foreground
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
