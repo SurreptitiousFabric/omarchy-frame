@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `24dcc2b`
+- Code and packaging candidate: local commit `0e14e31`
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -21,25 +21,26 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 75.7% backend / 75.9% repository total on `5b3eb26` |
+| Backend statement coverage at least 75% | PASS | 75.7% backend / 75.9% repository total on `0e14e31` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
 | QML parses and loads in Omarchy shell | PASS | Standalone lint plus live shell load |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `5b3eb26`; validator and race suite passed |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `0e14e31`; race, vet, manifest, repository policy, checksum, and no-Go runtime gates passed |
+| Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
 | CI and tagged release workflows execute remotely | PENDING | Requires an owner-approved remote repository |
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Local absolute `file://` install |
+| Git-backed install through `omarchy plugin add` | PASS | Exact `0e14e31` local `file://` install under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
 | Panel opens without Frame-specific QML/runtime error | PASS | Live shell IPC smoke test |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
-| Reinstall preserves owner-only TV state | PASS | Existing authorization remained usable after reinstall |
+| Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher test showed themed focus, focused-monitor routing, and Escape dismissal after focus moved into a control |
 | Optional marketplace preview | N/A | Intentionally omitted; the marketplace permits repositories without one |
 
