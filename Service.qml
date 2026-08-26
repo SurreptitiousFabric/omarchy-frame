@@ -10,6 +10,9 @@ Item {
   property var snapshot: ({ok: false, online: false, device: {}})
   property var devices: []
   property var apps: []
+  property bool appsLoaded: false
+  property bool appsSupported: true
+  property string appsMessage: ""
   property var capabilities: []
   property bool busy: statusProcess.running || actionProcess.running || discoverProcess.running
   property string message: "Searching for The Frame…"
@@ -34,7 +37,7 @@ Item {
   function key(name) { run(["key",name],"") }
   function rotate() { run(["rotate"],"Rotation toggled") }
   function wake() { run(["wake"],"Wake packet sent") }
-  function loadApps() { run(["apps"],"") }
+  function loadApps() { appsMessage="Checking your TV…";run(["apps"],"") }
   function launch(id) { run(["launch",id],"App launch requested") }
   function art(request, value) { var a=["art",request];if(value!==undefined&&value!=="")a.push(String(value));run(a,"Art request sent") }
 
@@ -58,7 +61,7 @@ Item {
     command:[]
     stdout:StdioCollector{id:actionOut;waitForEnd:true}
     stderr:StdioCollector{id:actionErr;waitForEnd:true}
-    onExited:function(code){var p=root.parse(actionOut.text);if(code===0&&p&&p.ok){root.error="";if(p.apps)root.apps=p.apps;if(p.response)root.message=root.compact(JSON.stringify(p.response));else if(successText!=="")root.message=successText;else if(p.message)root.message=p.message}else root.error=root.compact((p&&p.error)||actionErr.text||"Command failed");refreshTimer.restart();Qt.callLater(root.next)}
+    onExited:function(code){var p=root.parse(actionOut.text);if(code===0&&p&&p.ok){root.error="";if(p.apps!==undefined){root.apps=p.apps||[];root.appsLoaded=true;root.appsSupported=p.supported===undefined?true:Boolean(p.supported);root.appsMessage=String(p.message||"")}if(p.response)root.message=root.compact(JSON.stringify(p.response));else if(successText!=="")root.message=successText;else if(p.message)root.message=p.message}else root.error=root.compact((p&&p.error)||actionErr.text||"Command failed");refreshTimer.restart();Qt.callLater(root.next)}
   }
   Timer{id:refreshTimer;interval:900;onTriggered:root.refresh()}
   Timer{interval:root.pollIntervalMs;repeat:true;running:true;onTriggered:if(root.panelOpen)root.refresh()}

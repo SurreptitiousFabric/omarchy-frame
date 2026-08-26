@@ -36,7 +36,7 @@ BarWidget {
         Button{text:"↻";onClicked:service&&service.refresh()}
       }
       Text{visible:service&&service.error!=="";text:service?service.error:"";color:Color.urgent;wrapMode:Text.Wrap;Layout.fillWidth:true;font.pixelSize:Style.font.caption}
-      ButtonGroup{Layout.alignment:Qt.AlignHCenter;spacing:Style.space(4);options:[{value:"remote",label:"Remote",icon:"󰒓"},{value:"apps",label:"Apps",icon:"󰀻"},{value:"art",label:"Art",icon:"󰏘"},{value:"setup",label:"Setup",icon:"󰒓"},{value:"api",label:"API",icon:"󰘦"}];value:root.page;foreground:root.panelForeground;background:"transparent";accent:Color.accent;fontFamily:root.bar.fontFamily;fontSize:Style.font.caption;onChanged:function(value){root.page=value}}
+      ButtonGroup{Layout.alignment:Qt.AlignHCenter;spacing:Style.space(4);options:[{value:"remote",label:"Remote",icon:"󰒓"},{value:"apps",label:"Apps",icon:"󰀻"},{value:"art",label:"Art",icon:"󰏘"},{value:"setup",label:"Setup",icon:"󰒓"},{value:"api",label:"API",icon:"󰘦"}];value:root.page;foreground:root.panelForeground;background:"transparent";accent:Color.accent;fontFamily:root.bar.fontFamily;fontSize:Style.font.caption;onChanged:function(value){root.page=value;if(value==="apps"&&service&&!service.appsLoaded)service.loadApps()}}
       ScrollView{id:scrollArea;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff;ScrollBar.vertical.policy:body.implicitHeight>height?ScrollBar.AsNeeded:ScrollBar.AlwaysOff
         Binding{target:scrollArea.contentItem;property:"interactive";value:body.implicitHeight>scrollArea.height}
         Column{id:body;width:scrollArea.availableWidth;spacing:Style.space(12)
@@ -55,9 +55,22 @@ BarWidget {
             Text{text:"Rotation holds Multi View for 3 seconds. The Samsung stand must already be paired to the TV.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
           }
           Column{visible:root.page==="apps";width:parent.width;spacing:Style.space(9)
-            Button{text:"Load installed apps";width:parent.width;onClicked:service.loadApps()}
-            Repeater{model:service?service.apps:[];Button{required property var modelData;width:parent.width;text:String(modelData.name||modelData.app_name||modelData.id||"App");onClicked:service.launch(String(modelData.appId||modelData.app_id||modelData.id||""))}}
-            Text{text:"The app list/launch REST endpoint is firmware-dependent. Source always opens Samsung's source picker.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim}
+            Column{visible:service&&service.appsLoaded&&service.apps.length>0;width:parent.width;spacing:Style.space(8)
+              Text{text:"INSTALLED APPS";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
+              Repeater{model:service?service.apps:[];Button{required property var modelData;width:parent.width;text:String(modelData.name||modelData.app_name||modelData.id||"App");onClicked:service.launch(String(modelData.appId||modelData.app_id||modelData.id||""))}}
+            }
+            Item{visible:!service||!service.appsLoaded||service.apps.length===0;width:parent.width;implicitHeight:280
+              Column{anchors.centerIn:parent;width:Math.min(parent.width,340);spacing:Style.space(12)
+                Text{anchors.horizontalCenter:parent.horizontalCenter;text:service&&service.appsLoaded?"󰀻":"󰐾";color:Color.accent;font.family:root.bar.fontFamily;font.pixelSize:Style.font.display}
+                Text{width:parent.width;horizontalAlignment:Text.AlignHCenter;text:!service||!service.appsLoaded?"Checking installed apps…":(!service.appsSupported?"App list unavailable":"No apps returned");color:root.panelForeground;font.pixelSize:Style.font.title;font.bold:true}
+                Text{width:parent.width;horizontalAlignment:Text.AlignHCenter;wrapMode:Text.Wrap;text:!service||!service.appsLoaded?"Asking the TV which apps it exposes on your local network.":(!service.appsSupported?"This Frame firmware does not expose its installed-app list. You can still open Samsung Home or the Source picker.":"The TV replied without any launchable apps. Use Samsung Home or the Source picker instead.");color:root.panelDim;font.pixelSize:Style.font.body}
+                RowLayout{width:parent.width;visible:service&&service.appsLoaded
+                  Button{text:"Open Home";Layout.fillWidth:true;onClicked:service.key("KEY_HOME")}
+                  Button{text:"Open Source";Layout.fillWidth:true;onClicked:service.key("KEY_SOURCE")}
+                }
+                Button{anchors.horizontalCenter:parent.horizontalCenter;visible:service&&service.appsLoaded;text:"Check again";onClicked:service.loadApps()}
+              }
+            }
           }
           Column{visible:root.page==="art";width:parent.width;spacing:Style.space(9)
             Repeater{model:[{"t":"Toggle TV / Art Mode","k":"KEY_POWER"},{"t":"Enter Art Mode","k":"KEY_AMBIENT"}];Button{required property var modelData;width:parent.width;text:modelData.t;onClicked:service.key(modelData.k)}}
