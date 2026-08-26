@@ -34,6 +34,7 @@ the tests never listen beyond `127.0.0.1`.
 - Tests, race detector, vet, manifest validation, and QML runtime load pass
 - Coverage reviewed by function; security/protocol paths cannot regress silently
 - ARM64 and AMD64 binaries rebuilt with CGO disabled and `-trimpath`
+- Tracked launcher selects the native release binary on both supported architectures
 - `SHA256SUMS` reproduced and verified
 - No symlinks, unexpected executables, world-writable files, or secrets
 - README/manual/capability limitations match the tested firmware
