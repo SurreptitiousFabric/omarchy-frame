@@ -50,6 +50,13 @@ func TestConfigRoundTripAndPermissions(t *testing.T) {
 		if dirInfo.Mode().Perm() != 0700 {
 			t.Fatalf("directory mode %o", dirInfo.Mode().Perm())
 		}
+		lockInfo, err := os.Stat(filepath.Join(filepath.Dir(p), ".config.lock"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if lockInfo.Mode().Perm() != 0600 {
+			t.Fatalf("lock mode %o", lockInfo.Mode().Perm())
+		}
 	}
 }
 
@@ -334,6 +341,83 @@ func TestConfigRejectsUnsafeStateDirectoryWithoutChangingIt(t *testing.T) {
 	}
 	if info.Mode().Perm() != 0755 {
 		t.Fatalf("state directory was mutated: mode=%v", info.Mode().Perm())
+	}
+}
+
+func TestConfigRejectsOversizedStateAndInvalidTokens(t *testing.T) {
+	p := privateConfigPath(t)
+	t.Setenv("OMARCHY_FRAME_CONFIG", p)
+	if err := os.WriteFile(p, []byte(strings.Repeat(" ", maxConfigSize+1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadConfig(); err == nil || !strings.Contains(err.Error(), "too large") {
+		t.Fatalf("accepted oversized state: %v", err)
+	}
+	for _, token := range []string{"bad\ntoken", strings.Repeat("a", 4097)} {
+		if err := saveConfig(Config{IP: "192.168.1.2", Token: token}); err == nil {
+			t.Fatalf("accepted invalid token of length %d", len(token))
+		}
+	}
+}
+
+func TestPairingTokenCannotOverwriteNewTV(t *testing.T) {
+	t.Setenv("OMARCHY_FRAME_CONFIG", privateConfigPath(t))
+	newTV := Config{IP: "192.168.1.9", Name: "New Frame"}
+	if err := saveConfig(newTV); err != nil {
+		t.Fatal(err)
+	}
+	stale := Config{IP: "192.168.1.8", Name: "Old Frame", Token: "old-token"}
+	if err := persistPairingToken(&stale, "new-token"); err == nil || !strings.Contains(err.Error(), "configuration changed") {
+		t.Fatalf("stale pairing was not rejected: %v", err)
+	}
+	stored, err := loadConfig()
+	if err != nil || stored != newTV || stale.IP != "192.168.1.8" {
+		t.Fatalf("new TV state changed: stored=%#v stale=%#v err=%v", stored, stale, err)
+	}
+}
+
+func TestConfigRejectsUnsafeLockFiles(t *testing.T) {
+	for _, test := range []struct {
+		name  string
+		setup func(t *testing.T, dir, lockPath string)
+		want  string
+	}{
+		{"permissive", func(t *testing.T, _, lockPath string) {
+			if err := os.WriteFile(lockPath, nil, 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Chmod(lockPath, 0644); err != nil {
+				t.Fatal(err)
+			}
+		}, "lock permissions"},
+		{"symlink", func(t *testing.T, dir, lockPath string) {
+			target := filepath.Join(dir, "target.lock")
+			if err := os.WriteFile(target, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(target, lockPath); err != nil {
+				t.Fatal(err)
+			}
+		}, "regular file"},
+		{"hard-link", func(t *testing.T, dir, lockPath string) {
+			target := filepath.Join(dir, "target.lock")
+			if err := os.WriteFile(target, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Link(target, lockPath); err != nil {
+				t.Fatal(err)
+			}
+		}, "multiple links"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			p := privateConfigPath(t)
+			t.Setenv("OMARCHY_FRAME_CONFIG", p)
+			dir := filepath.Dir(p)
+			test.setup(t, dir, filepath.Join(dir, ".config.lock"))
+			if err := saveConfig(Config{IP: "192.168.1.2"}); err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("accepted unsafe lock: %v", err)
+			}
+		})
 	}
 }
 
@@ -688,8 +772,8 @@ func TestAmbiguousArtOffModel(t *testing.T) {
 }
 
 func TestPublicErrorRedactsEndpointsAndTokens(t *testing.T) {
-	got := PublicError(errors.New("read tcp 192.168.1.4:1234->10.0.0.2:8002 wss://host/x?token=secret&name=ok"))
-	for _, secret := range []string{"192.168.1.4", "10.0.0.2", "secret"} {
+	got := PublicError(errors.New("read tcp 192.168.1.4:1234->10.0.0.2:8002 or [fe80::1234%eth0]:8002 wss://host/x?token=secret&name=ok"))
+	for _, secret := range []string{"192.168.1.4", "10.0.0.2", "fe80::1234", "secret"} {
 		if strings.Contains(got, secret) {
 			t.Fatalf("leaked %q in %q", secret, got)
 		}

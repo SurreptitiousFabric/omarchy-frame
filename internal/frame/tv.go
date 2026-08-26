@@ -145,8 +145,7 @@ func completePairing(c *Config, w *wsConn, handshakeTimeout time.Duration) error
 		return errors.New("TV denied pairing; remove the old authorization in TV settings and retry")
 	}
 	if event.Data.Token != "" && event.Data.Token != c.Token {
-		c.Token = event.Data.Token
-		if e = saveConfig(*c); e != nil {
+		if e = persistPairingToken(c, event.Data.Token); e != nil {
 			return e
 		}
 	}

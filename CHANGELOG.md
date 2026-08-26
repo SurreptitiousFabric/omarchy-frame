@@ -17,6 +17,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 - Remove private IP/MAC fields from routine status/configuration JSON, enforce
   owner-only state file/directory permissions, reject symlinked state, and pin
   the optional Avahi helper to `/usr/bin/avahi-browse`.
+- Serialize cross-process state changes with an owner-only lock, prevent stale
+  pairing from overwriting a newly selected TV, bound persisted state/tokens,
+  and redact bracketed IPv6 endpoints from public errors.
 
 ### Fixed
 

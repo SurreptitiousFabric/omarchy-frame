@@ -23,9 +23,11 @@ cannot authenticate a public CA chain.
   Power and Multi View; service, factory, reset, and unknown keys are rejected
   before a TV connection is opened.
 - Pairing state is atomically written in an owner-only directory/file.
+- Cross-process writes use an owner-only advisory lock; token persistence
+  rechecks the selected TV under that lock and refuses stale pairing updates.
 - Routine status/configuration JSON contains only display name/model and never
   serializes the token, private IP, or MAC; regression tests enforce this.
-- Public error text redacts LAN endpoints and token query parameters.
+- Public error text redacts IPv4/IPv6 LAN endpoints and token query parameters.
 - TLS requires 1.2+, despite unavoidable certificate verification bypass.
 - Discovery accepts only local IPv4 Samsung records and re-verifies TV metadata.
 - Thumbnail transfer endpoints must resolve to the configured TV address;
