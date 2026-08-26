@@ -36,42 +36,45 @@ BarWidget {
         Button{text:"↻";onClicked:service&&service.refresh()}
       }
       Text{visible:service&&service.error!=="";text:service?service.error:"";color:Color.urgent;wrapMode:Text.Wrap;Layout.fillWidth:true;font.pixelSize:Style.font.caption}
-      RowLayout{Layout.fillWidth:true;Repeater{model:["remote","apps","art","setup","api"];Button{required property string modelData;text:(root.page===modelData?"• ":"")+modelData.charAt(0).toUpperCase()+modelData.slice(1);onClicked:root.page=modelData}}}
-      ScrollView{Layout.fillWidth:true;Layout.fillHeight:true;clip:true
-        ColumnLayout{width:Math.max(340,popup.width-Style.space(28));spacing:Style.space(9)
-          ColumnLayout{visible:root.page==="remote";Layout.fillWidth:true;spacing:Style.space(7)
-            GridLayout{columns:3;Layout.alignment:Qt.AlignHCenter;rowSpacing:6;columnSpacing:6
+      ButtonGroup{Layout.alignment:Qt.AlignHCenter;spacing:Style.space(4);options:[{value:"remote",label:"Remote",icon:"󰒓"},{value:"apps",label:"Apps",icon:"󰀻"},{value:"art",label:"Art",icon:"󰏘"},{value:"setup",label:"Setup",icon:"󰒓"},{value:"api",label:"API",icon:"󰘦"}];value:root.page;foreground:root.panelForeground;background:"transparent";accent:Color.accent;fontFamily:root.bar.fontFamily;fontSize:Style.font.caption;onChanged:function(value){root.page=value}}
+      ScrollView{id:scrollArea;Layout.fillWidth:true;Layout.fillHeight:true;clip:true;ScrollBar.horizontal.policy:ScrollBar.AlwaysOff;ScrollBar.vertical.policy:body.implicitHeight>height?ScrollBar.AsNeeded:ScrollBar.AlwaysOff
+        Binding{target:scrollArea.contentItem;property:"interactive";value:body.implicitHeight>scrollArea.height}
+        Column{id:body;width:scrollArea.availableWidth;spacing:Style.space(12)
+          Column{visible:root.page==="remote";width:parent.width;spacing:Style.space(10)
+            Text{text:"NAVIGATION";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
+            GridLayout{columns:3;anchors.horizontalCenter:parent.horizontalCenter;rowSpacing:6;columnSpacing:6
               Item{Layout.preferredWidth:70;Layout.preferredHeight:38} Button{text:"▲";onClicked:service.key("KEY_UP")} Item{Layout.preferredWidth:70;Layout.preferredHeight:38}
               Button{text:"◀";onClicked:service.key("KEY_LEFT")} Button{text:"OK";onClicked:service.key("KEY_ENTER")} Button{text:"▶";onClicked:service.key("KEY_RIGHT")}
               Button{text:"Back";onClicked:service.key("KEY_RETURN")} Button{text:"▼";onClicked:service.key("KEY_DOWN")} Button{text:"Home";onClicked:service.key("KEY_HOME")}
             }
-            GridLayout{columns:4;Layout.fillWidth:true;rowSpacing:6;columnSpacing:6
+            Text{text:"CONTROLS";color:root.panelDim;font.pixelSize:Style.font.caption;font.bold:true;font.letterSpacing:1}
+            GridLayout{columns:4;width:parent.width;rowSpacing:6;columnSpacing:6
               Repeater{model:[{"t":"Vol +","k":"KEY_VOLUP"},{"t":"Mute","k":"KEY_MUTE"},{"t":"Ch +","k":"KEY_CHUP"},{"t":"Guide","k":"KEY_GUIDE"},{"t":"Vol −","k":"KEY_VOLDOWN"},{"t":"Source","k":"KEY_SOURCE"},{"t":"Ch −","k":"KEY_CHDOWN"},{"t":"List","k":"KEY_CH_LIST"},{"t":"⏮","k":"KEY_PRECH"},{"t":"⏪","k":"KEY_REWIND"},{"t":"Play/Pause","k":"KEY_PLAYPAUSE"},{"t":"⏩","k":"KEY_FF"},{"t":"Stop","k":"KEY_STOP"},{"t":"Info","k":"KEY_INFO"},{"t":"Tools","k":"KEY_TOOLS"},{"t":"Menu","k":"KEY_MENU"}];Button{required property var modelData;text:modelData.t;Layout.fillWidth:true;onClicked:service.key(modelData.k)}}
             }
-            Button{text:"Rotate portrait / landscape";Layout.fillWidth:true;onClicked:service.rotate()}
-            Text{text:"Rotation holds Multi View for 3 seconds. The Samsung stand must already be paired to the TV.";wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.panelDim;font.pixelSize:Style.font.caption}
+            Button{text:"Rotate portrait / landscape";width:parent.width;onClicked:service.rotate()}
+            Text{text:"Rotation holds Multi View for 3 seconds. The Samsung stand must already be paired to the TV.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim;font.pixelSize:Style.font.caption}
           }
-          ColumnLayout{visible:root.page==="apps";Layout.fillWidth:true
-            Button{text:"Load installed apps";onClicked:service.loadApps()}
-            Repeater{model:service?service.apps:[];Button{required property var modelData;Layout.fillWidth:true;text:String(modelData.name||modelData.app_name||modelData.id||"App");onClicked:service.launch(String(modelData.appId||modelData.app_id||modelData.id||""))}}
-            Text{text:"The app list/launch REST endpoint is firmware-dependent. Source always opens Samsung's source picker.";wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.panelDim}
+          Column{visible:root.page==="apps";width:parent.width;spacing:Style.space(9)
+            Button{text:"Load installed apps";width:parent.width;onClicked:service.loadApps()}
+            Repeater{model:service?service.apps:[];Button{required property var modelData;width:parent.width;text:String(modelData.name||modelData.app_name||modelData.id||"App");onClicked:service.launch(String(modelData.appId||modelData.app_id||modelData.id||""))}}
+            Text{text:"The app list/launch REST endpoint is firmware-dependent. Source always opens Samsung's source picker.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim}
           }
-          ColumnLayout{visible:root.page==="art";Layout.fillWidth:true
-            Repeater{model:[{"t":"Toggle TV / Art Mode","k":"KEY_POWER"},{"t":"Enter Art Mode","k":"KEY_AMBIENT"}];Button{required property var modelData;Layout.fillWidth:true;text:modelData.t;onClicked:service.key(modelData.k)}}
-            Button{text:"Read Art Mode status";Layout.fillWidth:true;onClicked:service.art("get_artmode_status")}
-            Button{text:"Read current artwork";Layout.fillWidth:true;onClicked:service.art("get_current_artwork")}
-            Button{text:"Read available categories";Layout.fillWidth:true;onClicked:service.art("get_category_list")}
-            Button{text:"Read slideshow status";Layout.fillWidth:true;onClicked:service.art("get_slideshow_status")}
-            Text{text:"Samsung has changed the Art WebSocket between firmware releases. Unsupported requests fail visibly and never disable ordinary remote control.";wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.panelDim}
+          Column{visible:root.page==="art";width:parent.width;spacing:Style.space(9)
+            Repeater{model:[{"t":"Toggle TV / Art Mode","k":"KEY_POWER"},{"t":"Enter Art Mode","k":"KEY_AMBIENT"}];Button{required property var modelData;width:parent.width;text:modelData.t;onClicked:service.key(modelData.k)}}
+            Button{text:"Read Art Mode status";width:parent.width;onClicked:service.art("get_artmode_status")}
+            Button{text:"Read current artwork";width:parent.width;onClicked:service.art("get_current_artwork")}
+            Button{text:"Read available categories";width:parent.width;onClicked:service.art("get_category_list")}
+            Button{text:"Read slideshow status";width:parent.width;onClicked:service.art("get_slideshow_status")}
+            Text{text:"Samsung has changed the Art WebSocket between firmware releases. Unsupported requests fail visibly and never disable ordinary remote control.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim}
           }
-          ColumnLayout{visible:root.page==="setup";Layout.fillWidth:true
-            Button{text:"Discover Frame TVs";onClicked:service.discover()}
-            Repeater{model:service?service.devices:[];Button{required property var modelData;Layout.fillWidth:true;text:String(modelData.name||modelData.model||modelData.ip);onClicked:service.configure(String(modelData.ip))}}
-            TextField{id:ipField;Layout.fillWidth:true;placeholderText:"TV IP address, e.g. 192.168.1.50";inputMethodHints:Qt.ImhFormattedNumbersOnly}
-            Button{text:"Save IP";enabled:ipField.text.trim()!=="";onClicked:service.configure(ipField.text)}
-            Text{text:"Initial stand pairing requires a compatible physical Samsung Smart Remote: hold Settings/Number/Color + Multi View together for at least 3 seconds. Firmware 1720.7 rejects that chord from network remotes.";wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.panelDim}
+          Column{visible:root.page==="setup";width:parent.width;spacing:Style.space(9)
+            Button{text:"Discover Frame TVs";width:parent.width;onClicked:service.discover()}
+            Repeater{model:service?service.devices:[];Button{required property var modelData;width:parent.width;text:String(modelData.name||modelData.model||modelData.ip);onClicked:service.configure(String(modelData.ip))}}
+            TextField{id:ipField;width:parent.width;placeholderText:"TV IP address, e.g. 192.168.1.50";inputMethodHints:Qt.ImhFormattedNumbersOnly}
+            Button{text:"Save IP";width:parent.width;enabled:ipField.text.trim()!=="";onClicked:service.configure(ipField.text)}
+            Text{text:"Initial stand pairing requires a compatible physical Samsung Smart Remote: hold Settings/Number/Color + Multi View together for at least 3 seconds. Firmware 1720.7 rejects that chord from network remotes.";width:parent.width;wrapMode:Text.Wrap;color:root.panelDim}
           }
-          ColumnLayout{visible:root.page==="api";Layout.fillWidth:true
+          Column{visible:root.page==="api";width:parent.width;spacing:Style.space(9)
             Repeater{model:service?service.capabilities:[];ColumnLayout{required property var modelData;Layout.fillWidth:true;Text{text:String(modelData.group||"");font.bold:true;color:root.panelForeground}Text{text:String(modelData.items||"");wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.panelDim}}}
             Text{visible:!service||service.capabilities.length===0;text:"Connect to the TV to load its capability reference.";color:root.panelDim}
           }
