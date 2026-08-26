@@ -179,7 +179,7 @@ BarWidget {
     Component {
         id: frameIcon
         Text {
-            text: "󰒄"
+            text: "󰔂"
             color: root.service && root.service.snapshot.online ? Color.accent : root.panelDim
             font.family: root.iconFont
             font.pixelSize: Style.font.display
@@ -245,7 +245,7 @@ BarWidget {
 
     Text {
         anchors.centerIn: parent
-        text: "󰒄"
+        text: "󰔂"
         color: root.bar ? root.bar.barForeground : Color.foreground
         font.family: root.iconFont
         font.pixelSize: Style.font.body
