@@ -24,6 +24,7 @@ go vet ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 scripts/build-release.sh
 scripts/test-packaged-runtime.sh
+scripts/test-qml-runtime.sh
 scripts/test-repository-policy.sh
 scripts/test-ui-contract.sh
 omarchy plugin validate .
