@@ -29,6 +29,10 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 - Split the panel into focused Remote, Art, Photos, Setup, gallery-card, and TV
   icon QML components.
+- Draw the plugin identity as a theme-aware retro antenna television so it is
+  visually distinct from Omarchy's generic display widget.
 - Expand backend coverage beyond 75% with race-tested in-memory protocol and
   local transfer integration tests.
 - Pin release builds to mise-managed Go 1.27.0 and add CI/release automation.
+- Add an offline capability query and a packaged-runtime gate that executes the
+  native static launcher with Go absent from its environment.

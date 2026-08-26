@@ -19,6 +19,7 @@ go test -race -coverprofile=coverage.out ./...
 go tool cover -func=coverage.out
 go vet ./...
 scripts/build-release.sh
+scripts/test-packaged-runtime.sh
 omarchy plugin validate .
 ```
 
@@ -43,8 +44,11 @@ the tests never listen beyond `127.0.0.1`.
 - `SHA256SUMS` reproduced and verified
 - No symlinks, unexpected executables, world-writable files, or secrets
 - README/manual/capability limitations match the tested firmware
-- Root license and optional user-approved `preview.png` present
+- Root license present; include `preview.png` only after owner approval of the
+  exact image
 - Install and removal tested from a clean checkout
+- `ACCEPTANCE.md` matches the exact release candidate and has no unexplained
+  pending applicable check
 - Publication and marketplace submission performed only with owner approval
 
 ## Versioning

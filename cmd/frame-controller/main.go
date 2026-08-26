@@ -3,19 +3,25 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/swa/omarchy-frame/internal/frame"
 )
 
 func main() {
-	result, err := frame.Run(os.Args[1:])
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
+	result, err := frame.Run(args)
 	if err != nil {
-		_ = json.NewEncoder(os.Stdout).Encode(map[string]any{"ok": false, "error": frame.PublicError(err)})
-		os.Exit(1)
+		_ = json.NewEncoder(stdout).Encode(map[string]any{"ok": false, "error": frame.PublicError(err)})
+		return 1
 	}
-	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+	if err := json.NewEncoder(stdout).Encode(result); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
 	}
+	return 0
 }

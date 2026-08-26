@@ -74,6 +74,47 @@ func TestCapabilityGroupsAndKeys(t *testing.T) {
 	}
 }
 
+func TestCapabilitiesCommandNeedsNoConfiguration(t *testing.T) {
+	t.Setenv("OMARCHY_FRAME_CONFIG", filepath.Join(t.TempDir(), "missing", "config.json"))
+	result, err := Run([]string{"capabilities"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	groups, ok := result["capabilities"].([]map[string]string)
+	if result["ok"] != true || !ok || len(groups) != len(capabilities()) {
+		t.Fatalf("unexpected capabilities result: %#v", result)
+	}
+	if _, err := Run([]string{"capabilities", "unexpected"}); err == nil {
+		t.Fatal("capabilities accepted an argument")
+	}
+}
+
+func TestCommandArgumentShapes(t *testing.T) {
+	valid := [][]string{
+		{"capabilities"}, {"discover"}, {"configure", "192.168.1.2"}, {"status"}, {"wake"},
+		{"key", "KEY_HOME"}, {"hold", "KEY_POWER"}, {"hold", "KEY_POWER", "3000"}, {"rotate"},
+		{"art", "get_artmode_status"}, {"gallery"}, {"select-art", "id"}, {"upload-art", "/tmp/photo.jpg"},
+		{"delete-art", "id"}, {"slideshow", "5", "sequential"},
+	}
+	for _, args := range valid {
+		if err := validateCommandArgs(args); err != nil {
+			t.Errorf("valid shape %v: %v", args, err)
+		}
+	}
+
+	invalid := [][]string{
+		nil, {"unknown"}, {"capabilities", "extra"}, {"discover", "extra"}, {"configure"},
+		{"status", "extra"}, {"wake", "extra"}, {"key"}, {"hold"}, {"hold", "KEY_POWER", "3000", "extra"},
+		{"rotate", "extra"}, {"art"}, {"gallery", "extra"}, {"select-art"}, {"upload-art"},
+		{"delete-art"}, {"slideshow", "5"},
+	}
+	for _, args := range invalid {
+		if err := validateCommandArgs(args); err == nil {
+			t.Errorf("invalid shape accepted: %v", args)
+		}
+	}
+}
+
 func TestQMLRemoteKeysMatchBackendAllowlist(t *testing.T) {
 	keyPattern := regexp.MustCompile(`KEY_[A-Z0-9_]+`)
 	used := map[string]bool{}
@@ -173,7 +214,7 @@ func TestCommandValidationDoesNotTouchNetwork(t *testing.T) {
 	if _, err := Run([]string{"unknown"}); err == nil {
 		t.Fatal("expected unknown command")
 	}
-	for _, args := range [][]string{nil, {"configure"}, {"key"}, {"hold"}, {"art"}, {"select-art"}} {
+	for _, args := range [][]string{nil, {"configure"}, {"configure", "192.168.1.2", "extra"}, {"discover", "extra"}, {"status", "extra"}, {"wake", "extra"}, {"key"}, {"key", "KEY_HOME", "extra"}, {"hold"}, {"hold", "KEY_POWER", "3000", "extra"}, {"rotate", "extra"}, {"art"}, {"gallery", "extra"}, {"select-art"}} {
 		if _, err := Run(args); err == nil {
 			t.Fatalf("expected validation error for %v", args)
 		}
@@ -228,9 +269,10 @@ func TestConfiguredCommandArgumentValidation(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, args := range [][]string{
-		{"key"}, {"key", "KEY_FACTORY"},
-		{"hold"}, {"hold", "KEY_HOME", "100"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"},
-		{"wake"},
+		{"status", "extra"},
+		{"key"}, {"key", "KEY_FACTORY"}, {"key", "KEY_HOME", "extra"},
+		{"hold"}, {"hold", "KEY_HOME", "100", "extra"}, {"hold", "KEY_HOME", "100"}, {"hold", "KEY_HOME", "99"}, {"hold", "KEY_HOME", "10001"},
+		{"wake", "extra"}, {"rotate", "extra"}, {"gallery", "extra"},
 		{"art"}, {"art", "set_artmode_status"}, {"art", "get_content_list"}, {"art", "get_artmode_status", "unexpected"},
 		{"select-art"}, {"select-art", "../bad"},
 		{"upload-art"}, {"upload-art", "relative.jpg"},

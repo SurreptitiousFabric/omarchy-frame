@@ -73,6 +73,13 @@ executables; the tracked POSIX launcher selects the matching binary at runtime,
 so users do not need Go. Review the source and reproduce the hashes in
 `bin/SHA256SUMS` before publishing.
 
+The offline command below lists the reviewed feature surface and is also used
+by the packaged-runtime test; it does not need a configured TV:
+
+```bash
+bin/frame-controller capabilities
+```
+
 ## Remove
 
 ```bash
@@ -123,4 +130,5 @@ License: MIT.
 
 See [USER_MANUAL.md](USER_MANUAL.md) for operation and troubleshooting,
 [THREAT_MODEL.md](THREAT_MODEL.md) for the security boundary, and
-[DEVELOPMENT.md](DEVELOPMENT.md) for testing and release procedures.
+[DEVELOPMENT.md](DEVELOPMENT.md) for testing and release procedures. The
+evidence-backed release matrix is in [ACCEPTANCE.md](ACCEPTANCE.md).

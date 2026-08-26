@@ -27,18 +27,17 @@ func lanHTTPClient(timeout time.Duration) http.Client {
 }
 
 func Run(args []string) (map[string]any, error) {
-	if len(args) == 0 {
-		return nil, errors.New("usage: frame-controller <discover|configure|status|key|hold|rotate|wake|art|gallery|select-art|upload-art|delete-art|slideshow>")
+	if err := validateCommandArgs(args); err != nil {
+		return nil, err
 	}
 	cmd := args[0]
 	switch cmd {
+	case "capabilities":
+		return map[string]any{"ok": true, "capabilities": capabilities()}, nil
 	case "discover":
 		ds, err := discover()
 		return map[string]any{"ok": err == nil, "devices": ds}, err
 	case "configure":
-		if len(args) < 2 {
-			return nil, errors.New("configure requires an IP")
-		}
 		if !isLocalTVIP(net.ParseIP(args[1])) {
 			return nil, errors.New("TV address must be a private or link-local IP")
 		}
@@ -67,15 +66,9 @@ func Run(args []string) (map[string]any, error) {
 		e = wake(c)
 		return map[string]any{"ok": e == nil, "message": "Wake packet sent"}, e
 	case "key":
-		if len(args) < 2 {
-			return nil, errors.New("key requires KEY_NAME")
-		}
 		e = sendKey(&c, args[1], "click", 0)
 		return map[string]any{"ok": e == nil, "message": args[1] + " sent"}, e
 	case "hold":
-		if len(args) < 2 {
-			return nil, errors.New("hold requires KEY_NAME")
-		}
 		ms := 3000
 		if len(args) > 2 {
 			ms, _ = strconv.Atoi(args[2])
@@ -89,31 +82,16 @@ func Run(args []string) (map[string]any, error) {
 		e = sendKey(&c, "KEY_MULTI_VIEW", "hold", 3*time.Second)
 		return map[string]any{"ok": e == nil, "message": "Rotation toggled"}, e
 	case "art":
-		if len(args) < 2 {
-			return nil, errors.New("art requires a request type")
-		}
 		return artRequest(&c, args[1], args[2:])
 	case "gallery":
 		return artGallery(&c)
 	case "select-art":
-		if len(args) != 2 {
-			return nil, errors.New("select-art requires a content id")
-		}
 		return selectArt(&c, args[1])
 	case "upload-art":
-		if len(args) != 2 {
-			return nil, errors.New("upload-art requires one local image")
-		}
 		return uploadArt(&c, args[1])
 	case "delete-art":
-		if len(args) != 2 {
-			return nil, errors.New("delete-art requires one content id")
-		}
 		return deleteArt(&c, args[1])
 	case "slideshow":
-		if len(args) != 3 {
-			return nil, errors.New("slideshow requires minutes and sequential|shuffle")
-		}
 		minutes, err := strconv.Atoi(args[1])
 		if err != nil || minutes < 0 || minutes > 1440 {
 			return nil, errors.New("slideshow minutes must be 0-1440")
@@ -122,8 +100,48 @@ func Run(args []string) (map[string]any, error) {
 			return nil, errors.New("slideshow order must be sequential or shuffle")
 		}
 		return setMyPhotosSlideshow(&c, minutes, args[2] == "shuffle")
+	}
+	return nil, errors.New("internal command dispatch error")
+}
+
+func validateCommandArgs(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: frame-controller <capabilities|discover|configure|status|key|hold|rotate|wake|art|gallery|select-art|upload-art|delete-art|slideshow>")
+	}
+	cmd := args[0]
+	require := func(count int, message string) error {
+		if len(args) != count {
+			return errors.New(message)
+		}
+		return nil
+	}
+	switch cmd {
+	case "capabilities", "discover", "status", "wake", "rotate", "gallery":
+		return require(1, cmd+" takes no arguments")
+	case "configure":
+		return require(2, "configure requires one IP")
+	case "key":
+		return require(2, "key requires KEY_NAME")
+	case "hold":
+		if len(args) < 2 || len(args) > 3 {
+			return errors.New("hold requires KEY_NAME and optional milliseconds")
+		}
+		return nil
+	case "art":
+		if len(args) < 2 {
+			return errors.New("art requires a request type")
+		}
+		return nil
+	case "select-art":
+		return require(2, "select-art requires a content id")
+	case "upload-art":
+		return require(2, "upload-art requires one local image")
+	case "delete-art":
+		return require(2, "delete-art requires one content id")
+	case "slideshow":
+		return require(3, "slideshow requires minutes and sequential|shuffle")
 	default:
-		return nil, fmt.Errorf("unknown command %q", cmd)
+		return fmt.Errorf("unknown command %q", cmd)
 	}
 }
 

@@ -29,7 +29,7 @@ if find . -path ./.git -prune -o -type f -perm -0002 -print -quit | grep -q .; t
 fi
 
 sh -n bin/frame-controller
-bash -n scripts/build-release.sh scripts/validate-repository.sh
+bash -n scripts/build-release.sh scripts/test-packaged-runtime.sh scripts/validate-repository.sh
 
 if awk 'NF >= 2 && $2 ~ /^\//' bin/SHA256SUMS | grep -q .; then
   echo "validate-repository: SHA256SUMS contains absolute paths" >&2
@@ -41,7 +41,9 @@ fi
   sha256sum -c SHA256SUMS
 )
 
-for required in README.md USER_MANUAL.md CAPABILITIES.md THREAT_MODEL.md SECURITY.md DEVELOPMENT.md LICENSE; do
+scripts/test-packaged-runtime.sh
+
+for required in README.md USER_MANUAL.md CAPABILITIES.md THREAT_MODEL.md SECURITY.md DEVELOPMENT.md ACCEPTANCE.md LICENSE; do
   test -f "$required" || {
     echo "validate-repository: missing $required" >&2
     exit 1
