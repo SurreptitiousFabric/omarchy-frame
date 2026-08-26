@@ -26,6 +26,8 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 - Generate portable release checksums with relative filenames.
 - Make artwork and photo cards keyboard-focusable, expose accessible button
   semantics, and support Enter, Return, and Space activation.
+- Use Omarchy's native panel lifecycle and controller so bar clicks, shell IPC,
+  multi-monitor routing, focus, and popup switching share one state model.
 
 ### Changed
 

@@ -9,12 +9,14 @@ import qs.Commons
 import qs.Ui
 import "components"
 
-BarWidget {
+Panel {
     id: root
 
     moduleName: "swa.frame"
+    ipcTarget: "swa.frame"
 
     readonly property var service: bar && bar.shell ? bar.shell.serviceFor("swa.frame") : null
+    readonly property int barSize: bar ? bar.barSize : Style.bar.sizeHorizontal
     readonly property color panelForeground: bar ? bar.foreground : Color.foreground
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
     readonly property color softFill: Style.normalFillFor(panelForeground, Color.accent)
@@ -30,11 +32,9 @@ BarWidget {
     readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "offline" ? "OFFLINE" : "ART / TV?"
     readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "offline" ? "Samsung Frame · unreachable" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · Samsung did not report a reliable mode" : "Samsung Frame · checking status"
 
-    property bool popupOpen: false
     property string page: "remote"
     property string pendingDeleteID: ""
 
-    readonly property bool opened: popupOpen
     readonly property int naturalPanelHeight: {
         if (page === "art" || page === "photos")
             return 620;
@@ -53,16 +53,6 @@ BarWidget {
         if (remotePageView.section === "tv")
             return 470;
         return 400;
-    }
-
-    function close() {
-        popupOpen = false;
-    }
-    function open() {
-        popupOpen = true;
-    }
-    function toggle() {
-        popupOpen = !popupOpen;
     }
 
     Component {
@@ -113,8 +103,8 @@ BarWidget {
         }
     }
 
-    onPopupOpenChanged: {
-        if (!popupOpen) {
+    onOpenedChanged: {
+        if (!opened) {
             remotePageView.reset();
             pendingDeleteID = "";
             photosPage.reset();
@@ -122,8 +112,8 @@ BarWidget {
         }
         if (service) {
             service.pollIntervalMs = Math.max(5, Math.min(120, Number(root.setting("pollSeconds", 15)))) * 1000;
-            service.panelOpen = popupOpen;
-            if (popupOpen)
+            service.panelOpen = opened;
+            if (opened)
                 service.refresh();
         }
     }
@@ -158,7 +148,7 @@ BarWidget {
         anchorItem: button
         bar: root.bar
         owner: root
-        open: root.popupOpen
+        open: root.opened
         focusTarget: keyCatcher
         contentWidth: popup.fittedContentWidth(Math.max(410, Math.min(540, Number(root.setting("panelWidth", 440)))))
         contentHeight: popup.cappedContentHeight(Math.min(root.naturalPanelHeight, Math.max(400, Math.min(700, Number(root.setting("panelHeight", 620))))))

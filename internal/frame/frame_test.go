@@ -164,6 +164,29 @@ func TestGalleryCardsRemainKeyboardAccessible(t *testing.T) {
 	}
 }
 
+func TestBarWidgetUsesNativePanelLifecycle(t *testing.T) {
+	body, err := os.ReadFile("../../BarWidget.qml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(body)
+	for _, contract := range []string{
+		"Panel {",
+		"ipcTarget: \"swa.frame\"",
+		"onOpenedChanged:",
+		"open: root.opened",
+	} {
+		if !strings.Contains(source, contract) {
+			t.Fatalf("native panel contract missing %q", contract)
+		}
+	}
+	for _, obsolete := range []string{"property bool popupOpen", "readonly property bool opened: popupOpen"} {
+		if strings.Contains(source, obsolete) {
+			t.Fatalf("obsolete panel lifecycle remains: %q", obsolete)
+		}
+	}
+}
+
 func TestHeldKeyAlwaysAttemptsRelease(t *testing.T) {
 	var actions []string
 	failedRelease := true
