@@ -66,7 +66,7 @@ Item {
     command: []
     stdout: StdioCollector{id:statusOut;waitForEnd:true}
     stderr: StdioCollector{id:statusErr;waitForEnd:true}
-    onExited: function(code){var p=root.parse(statusOut.text);if(code===0&&p){root.snapshot=p;root.capabilities=p.capabilities||[];root.error="";root.message=p.online?"Connected locally":"TV is offline"}else{root.error=root.compact((p&&p.error)||statusErr.text||"TV not configured");if(root.devices.length===0)Qt.callLater(root.discover)}}
+    onExited: function(code){var p=root.parse(statusOut.text);if(code===0&&p){root.snapshot=p;root.capabilities=p.capabilities||[];root.error="";root.message=p.online?(p.mode==="unknown"?"Connected · mode unavailable":"Connected locally"):"TV is offline"}else{root.error=root.compact((p&&p.error)||statusErr.text||"TV not configured");if(root.devices.length===0)Qt.callLater(root.discover)}}
   }
   Process {
     id: discoverProcess

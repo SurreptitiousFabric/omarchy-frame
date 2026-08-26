@@ -96,9 +96,10 @@ is restricted to the configured numeric IP and Samsung port 8002.
 
 Samsung's undocumented Art protocol and application REST endpoint vary across
 firmware. Ordinary remote control remains usable when those endpoints are
-absent; the header reports **UNKNOWN** instead of guessing when the optional
-Art-status request is unavailable. Rotation toggles orientation because the
-LS03B API does not report a reliable physical orientation state.
+absent; the header reports **ART / TV?** instead of guessing when the optional
+Art-status request is unavailable or ambiguous. Tested LS03B firmware can
+return `off` while visibly displaying artwork. Rotation toggles orientation
+because the LS03B API does not report a reliable physical orientation state.
 
 ## Marketplace
 

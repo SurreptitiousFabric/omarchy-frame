@@ -179,6 +179,7 @@ func TestArtModeFromResult(t *testing.T) {
 		want   string
 	}{
 		{"art", map[string]any{"art": map[string]any{"event": "get_artmode_status", "value": "on"}}, "art"},
+		{"art navigation", map[string]any{"art": map[string]any{"event": "get_artmode_status", "value": "nav"}}, "art"},
 		{"tv", map[string]any{"art": map[string]any{"event": "artmode_status", "value": " OFF "}}, "tv"},
 		{"missing art payload", map[string]any{"ok": true}, "unknown"},
 		{"missing value", map[string]any{"art": map[string]any{"event": "artmode_status"}}, "unknown"},
@@ -196,25 +197,29 @@ func TestArtModeFromResult(t *testing.T) {
 
 func TestFrameStatusModesAndFallback(t *testing.T) {
 	config := &Config{IP: "192.168.1.20", Name: "Frame"}
-	info := func(string) (APIInfo, error) {
-		var result APIInfo
-		result.Device.PowerState = "standby"
-		result.Device.ModelName = "LS03B"
-		return result, nil
+	infoFor := func(model string) func(string) (APIInfo, error) {
+		return func(string) (APIInfo, error) {
+			var result APIInfo
+			result.Device.PowerState = "standby"
+			result.Device.ModelName = model
+			return result, nil
+		}
 	}
 
 	for _, test := range []struct {
 		name   string
 		art    map[string]any
 		artErr error
+		model  string
 		want   string
 	}{
-		{"art", map[string]any{"art": map[string]any{"value": "on"}}, nil, "art"},
-		{"tv", map[string]any{"art": map[string]any{"value": "off"}}, nil, "tv"},
-		{"unsupported Art service", nil, errors.New("unavailable"), "unknown"},
+		{"art", map[string]any{"art": map[string]any{"value": "on"}}, nil, "QE55LS03B", "art"},
+		{"reliable tv", map[string]any{"art": map[string]any{"value": "off"}}, nil, "QE55LS03D", "tv"},
+		{"ambiguous 2022 off", map[string]any{"art": map[string]any{"value": "off"}}, nil, "QE55LS03BAUXXH", "unknown"},
+		{"unsupported Art service", nil, errors.New("unavailable"), "QE55LS03D", "unknown"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			got := frameStatus(config, info, func(*Config) (map[string]any, error) { return test.art, test.artErr })
+			got := frameStatus(config, infoFor(test.model), func(*Config) (map[string]any, error) { return test.art, test.artErr })
 			if got["online"] != true || got["mode"] != test.want || got["power"] != "standby" {
 				t.Fatalf("unexpected status %#v", got)
 			}
@@ -228,6 +233,17 @@ func TestFrameStatusModesAndFallback(t *testing.T) {
 	})
 	if offline["online"] != false || offline["mode"] != "off" || artCalled {
 		t.Fatalf("unexpected offline status %#v, artCalled=%v", offline, artCalled)
+	}
+}
+
+func TestAmbiguousArtOffModel(t *testing.T) {
+	for _, model := range []string{"QE55LS03BAUXXH", "qn65ls03bafxza", "LS03B"} {
+		if !ambiguousArtOffModel(model) {
+			t.Fatalf("expected %q to be ambiguous", model)
+		}
+	}
+	if ambiguousArtOffModel("QE55LS03DAUXXH") {
+		t.Fatal("newer model should retain its reported TV state")
 	}
 }
 

@@ -136,6 +136,9 @@ func frameStatus(c *Config, infoFn func(string) (APIInfo, error), artFn func(*Co
 	mode := "unknown"
 	if result, artErr := artFn(c); artErr == nil {
 		mode = artModeFromResult(result)
+		if mode == "tv" && ambiguousArtOffModel(info.Device.ModelName) {
+			mode = "unknown"
+		}
 	}
 	return map[string]any{"ok": true, "online": true, "mode": mode, "device": c.public(), "power": info.Device.PowerState, "model": info.Device.ModelName, "capabilities": capabilities()}
 }
@@ -215,13 +218,19 @@ func artModeFromResult(result map[string]any) string {
 		return "unknown"
 	}
 	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(art["value"]))) {
-	case "on":
+	case "on", "nav":
 		return "art"
 	case "off":
 		return "tv"
 	default:
 		return "unknown"
 	}
+}
+
+func ambiguousArtOffModel(model string) bool {
+	// 2022 LS03B firmware can return `off` while artwork is visibly displayed;
+	// on that generation `off` is an Art UI state, not proof of TV mode.
+	return strings.Contains(strings.ToUpper(model), "LS03B")
 }
 
 func artRequestID() (string, error) {

@@ -26,8 +26,8 @@ BarWidget {
         var value = String(service.snapshot.mode || "unknown").toLowerCase();
         return value === "art" || value === "tv" ? value : "unknown";
     }
-    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "off" ? "OFF" : "UNKNOWN"
-    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "off" ? "Samsung Frame · off" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · mode unavailable" : "Samsung Frame · checking status"
+    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "off" ? "OFF" : "ART / TV?"
+    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "off" ? "Samsung Frame · off" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · Samsung did not report a reliable mode" : "Samsung Frame · checking status"
 
     property bool popupOpen: false
     property string page: "remote"

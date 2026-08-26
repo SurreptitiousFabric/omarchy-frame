@@ -7,8 +7,8 @@ an approval dialog for **Omarchy Frame**; choose Allow. The plugin does not use
 Samsung Cloud or require a Samsung account.
 
 Open the TV icon in the Omarchy bar. The header shows **TV**, **ART**, **OFF**,
-or **UNKNOWN**. **UNKNOWN** means the TV is reachable but its firmware did not
-answer the optional Art Mode query; it does not mean the TV is off.
+or **ART / TV?**. The last label means the TV is reachable but its firmware did
+not provide a trustworthy Art Mode answer; it does not mean the TV is off.
 Middle-click the bar icon or press the refresh button to recheck. The status is
 refreshed every 15 seconds while the panel is open by default.
 
@@ -63,7 +63,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 | TV offline | TV asleep or address changed | Use Wake; rediscover; reserve its address |
 | Wake fails | MAC was never learned or broadcast blocked | Discover once while on; check router Wi-Fi broadcast policy |
 | Art request fails | Firmware changed/disabled Art socket | Ordinary remote control remains available |
-| Header says UNKNOWN | TV is online but Art status was unavailable | Refresh; remote controls remain usable |
+| Header says ART / TV? | TV is online but Art status was unavailable or ambiguous | Remote controls remain usable; LS03B firmware can report `off` while displaying art |
 | Upload fails | Unsupported image, TV storage full, or Art service declined transfer | Try a JPEG/PNG under 20 MB; ensure Art Mode has completed its first-use setup |
 | Uploaded photo is missing | Gallery still reflects the previous TV list | Wait for the automatic refresh or press Refresh gallery |
 | Rotate says sent but does not move | Stand not paired | Follow the physical-remote pairing steps above |
