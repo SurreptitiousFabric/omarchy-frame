@@ -172,6 +172,65 @@ func TestArtRequestID(t *testing.T) {
 	}
 }
 
+func TestArtModeFromResult(t *testing.T) {
+	tests := []struct {
+		name   string
+		result map[string]any
+		want   string
+	}{
+		{"art", map[string]any{"art": map[string]any{"event": "get_artmode_status", "value": "on"}}, "art"},
+		{"tv", map[string]any{"art": map[string]any{"event": "artmode_status", "value": " OFF "}}, "tv"},
+		{"missing art payload", map[string]any{"ok": true}, "unknown"},
+		{"missing value", map[string]any{"art": map[string]any{"event": "artmode_status"}}, "unknown"},
+		{"unexpected value", map[string]any{"art": map[string]any{"value": "standby"}}, "unknown"},
+		{"wrong payload type", map[string]any{"art": "on"}, "unknown"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := artModeFromResult(test.result); got != test.want {
+				t.Fatalf("got %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestFrameStatusModesAndFallback(t *testing.T) {
+	config := &Config{IP: "192.168.1.20", Name: "Frame"}
+	info := func(string) (APIInfo, error) {
+		var result APIInfo
+		result.Device.PowerState = "standby"
+		result.Device.ModelName = "LS03B"
+		return result, nil
+	}
+
+	for _, test := range []struct {
+		name   string
+		art    map[string]any
+		artErr error
+		want   string
+	}{
+		{"art", map[string]any{"art": map[string]any{"value": "on"}}, nil, "art"},
+		{"tv", map[string]any{"art": map[string]any{"value": "off"}}, nil, "tv"},
+		{"unsupported Art service", nil, errors.New("unavailable"), "unknown"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got := frameStatus(config, info, func(*Config) (map[string]any, error) { return test.art, test.artErr })
+			if got["online"] != true || got["mode"] != test.want || got["power"] != "standby" {
+				t.Fatalf("unexpected status %#v", got)
+			}
+		})
+	}
+
+	artCalled := false
+	offline := frameStatus(config, func(string) (APIInfo, error) { return APIInfo{}, errors.New("offline") }, func(*Config) (map[string]any, error) {
+		artCalled = true
+		return nil, nil
+	})
+	if offline["online"] != false || offline["mode"] != "off" || artCalled {
+		t.Fatalf("unexpected offline status %#v, artCalled=%v", offline, artCalled)
+	}
+}
+
 func TestPublicErrorRedactsEndpointsAndTokens(t *testing.T) {
 	got := PublicError(errors.New("read tcp 192.168.1.4:1234->10.0.0.2:8002 wss://host/x?token=secret&name=ok"))
 	for _, secret := range []string{"192.168.1.4", "10.0.0.2", "secret"} {

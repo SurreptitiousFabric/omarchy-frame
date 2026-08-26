@@ -7,7 +7,7 @@ Item {
   property var shell: null
   readonly property string pluginPath: Quickshell.env("HOME") + "/.config/omarchy/plugins/swa.frame"
   readonly property string backend: pluginPath + "/bin/frame-controller"
-  property var snapshot: ({ok: false, online: false, device: {}})
+  property var snapshot: ({ok: false, online: false, mode: "unknown", device: {}})
   property var devices: []
   property var gallery: []
   property var artGallery: []

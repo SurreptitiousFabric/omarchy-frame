@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -62,11 +63,7 @@ func Run(args []string) (map[string]any, error) {
 	}
 	switch cmd {
 	case "status":
-		info, e := getInfo(c.IP)
-		if e != nil {
-			return map[string]any{"ok": true, "online": false, "device": c.public()}, nil
-		}
-		return map[string]any{"ok": true, "online": true, "device": c.public(), "power": info.Device.PowerState, "model": info.Device.ModelName, "capabilities": capabilities()}, nil
+		return frameStatus(&c, getInfo, artModeRequest), nil
 	case "wake":
 		e = wake(c)
 		return map[string]any{"ok": e == nil, "message": "Wake packet sent"}, e
@@ -131,12 +128,34 @@ func Run(args []string) (map[string]any, error) {
 	}
 }
 
+func frameStatus(c *Config, infoFn func(string) (APIInfo, error), artFn func(*Config) (map[string]any, error)) map[string]any {
+	info, err := infoFn(c.IP)
+	if err != nil {
+		return map[string]any{"ok": true, "online": false, "mode": "off", "device": c.public()}
+	}
+	mode := "unknown"
+	if result, artErr := artFn(c); artErr == nil {
+		mode = artModeFromResult(result)
+	}
+	return map[string]any{"ok": true, "online": true, "mode": mode, "device": c.public(), "power": info.Device.PowerState, "model": info.Device.ModelName, "capabilities": capabilities()}
+}
+
 func capabilities() []map[string]string {
 	return []map[string]string{
 		{"group": "Power", "items": "Wake-on-LAN, power off, Art Mode toggle"}, {"group": "Remote", "items": "navigation, home, back, menu, numbers, color keys, tools, info"}, {"group": "Media", "items": "play, pause, stop, record, rewind, fast-forward, previous, next"}, {"group": "Sound", "items": "volume up/down, mute"}, {"group": "Channels", "items": "channel up/down, guide, channel list"}, {"group": "Sources", "items": "source menu and HDMI keys where firmware accepts them"}, {"group": "The Frame", "items": "browse artwork; upload, select, and delete My Photos; rotate My Photos as a slideshow"}, {"group": "Rotating stand", "items": "three-second Multi View hold toggles portrait/landscape on LS03B"}}
 }
 
 func artRequest(c *Config, request string, args []string) (map[string]any, error) {
+	return artRequestWithTimeouts(c, request, args, 30*time.Second, 5*time.Second)
+}
+
+func artModeRequest(c *Config) (map[string]any, error) {
+	// Status is polled interactively. A missing or changed optional Art service
+	// must not hold up ordinary online/offline status.
+	return artRequestWithTimeouts(c, "get_artmode_status", nil, 2*time.Second, 2*time.Second)
+}
+
+func artRequestWithTimeouts(c *Config, request string, args []string, handshakeTimeout, replyTimeout time.Duration) (map[string]any, error) {
 	if !safeArtRequests[request] {
 		return nil, errors.New("unsupported Art API request")
 	}
@@ -147,7 +166,7 @@ func artRequest(c *Config, request string, args []string) (map[string]any, error
 	} else if len(args) > 0 {
 		return nil, errors.New("unsupported Art API request arguments")
 	}
-	w, e := connect(c, "com.samsung.art-app")
+	w, e := connectWithHandshakeTimeout(c, "com.samsung.art-app", handshakeTimeout)
 	if e != nil {
 		return nil, e
 	}
@@ -166,7 +185,7 @@ func artRequest(c *Config, request string, args []string) (map[string]any, error
 		return nil, e
 	}
 	for i := 0; i < 8; i++ {
-		reply, e := w.readText(5 * time.Second)
+		reply, e := w.readText(replyTimeout)
 		if e != nil {
 			return nil, e
 		}
@@ -188,6 +207,21 @@ func artRequest(c *Config, request string, args []string) (map[string]any, error
 		return result, nil
 	}
 	return nil, errors.New("Art API returned no response")
+}
+
+func artModeFromResult(result map[string]any) string {
+	art, ok := result["art"].(map[string]any)
+	if !ok {
+		return "unknown"
+	}
+	switch strings.ToLower(strings.TrimSpace(fmt.Sprint(art["value"]))) {
+	case "on":
+		return "art"
+	case "off":
+		return "tv"
+	default:
+		return "unknown"
+	}
 }
 
 func artRequestID() (string, error) {

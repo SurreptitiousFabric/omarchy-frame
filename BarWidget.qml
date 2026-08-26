@@ -18,6 +18,16 @@ BarWidget {
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
     readonly property color softFill: Style.normalFillFor(panelForeground, Color.accent)
     readonly property string uiFont: "sans-serif"
+    readonly property string mode: {
+        if (!service || !service.snapshot || !service.snapshot.ok)
+            return "unknown";
+        if (!service.snapshot.online)
+            return "off";
+        var value = String(service.snapshot.mode || "unknown").toLowerCase();
+        return value === "art" || value === "tv" ? value : "unknown";
+    }
+    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "off" ? "OFF" : "UNKNOWN"
+    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "off" ? "Samsung Frame · off" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · mode unavailable" : "Samsung Frame · checking status"
 
     property bool popupOpen: false
     property string page: "remote"
@@ -290,7 +300,7 @@ BarWidget {
         bar: root.bar
         text: " "
         labelVisible: false
-        tooltipText: root.service && root.service.snapshot.online ? "Samsung Frame · online" : "Samsung Frame · offline"
+        tooltipText: root.modeTooltip
         onPressed: function (mouseButton) {
             if (mouseButton === Qt.MiddleButton && root.service)
                 root.service.refresh();
@@ -326,7 +336,7 @@ BarWidget {
                 iconComponent: frameIcon
                 title: root.service && root.service.snapshot.device && root.service.snapshot.device.name ? root.service.snapshot.device.name : "Samsung The Frame"
                 meta: root.service ? root.service.message : "Connecting"
-                detail: root.service && root.service.snapshot.online ? String(root.service.snapshot.power || "ON").toUpperCase() : "OFFLINE"
+                detail: root.modeLabel
                 foreground: root.panelForeground
                 fontFamily: root.uiFont
                 trailingControl: headerActions

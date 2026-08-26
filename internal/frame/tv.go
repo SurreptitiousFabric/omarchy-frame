@@ -52,11 +52,15 @@ func remoteURL(c Config, channel string) string {
 }
 
 func connect(c *Config, channel string) (*wsConn, error) {
+	return connectWithHandshakeTimeout(c, channel, 30*time.Second)
+}
+
+func connectWithHandshakeTimeout(c *Config, channel string, handshakeTimeout time.Duration) (*wsConn, error) {
 	w, e := dialWS(remoteURL(*c, channel), 8*time.Second)
 	if e != nil {
 		return nil, e
 	}
-	msg, e := w.readText(30 * time.Second)
+	msg, e := w.readText(handshakeTimeout)
 	if e != nil {
 		w.Close()
 		return nil, fmt.Errorf("approve Omarchy Frame on the TV: %w", e)
