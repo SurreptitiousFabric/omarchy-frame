@@ -8,6 +8,8 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 ## Candidate
 
 - Code and packaging candidate: public commit `ebd38c8`
+- Installed public checkout: commit `1d5d949` cloned from public GitHub; only
+  this acceptance record and marketplace evidence differ from the code candidate
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -27,7 +29,7 @@ image, or raw TV response belongs in this file.
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
-| Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
+| Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 from both the candidate and the installed public checkout |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
 | Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `ebd38c8` locally, in a clean clone, and in CI |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
@@ -41,11 +43,11 @@ image, or raw TV response belongs in this file.
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Exact `ebd38c8` local `file://` update under the permanent ID |
-| Enable in right bar section | PASS | Live shell layout and plugin catalog |
-| Panel opens without Frame-specific QML/runtime error | PASS | Exact `ebd38c8` visible icon plus non-activating IPC open/close and zero Frame errors in the restarted shell journal |
+| Public GitHub install through `omarchy plugin add` | PASS | Removed the local-source clone and installed public commit `1d5d949` from the documented GitHub URL; a transient Omarchy discovery race required one rescan/retry |
+| Enable in right bar section | PASS | Full right-bar order was unchanged after reinstall; the Frame remained between the tray and agents widgets |
+| Panel opens without Frame-specific QML/runtime error | PASS | Installed public checkout passed complete-widget creation; live non-activating IPC summon/hide returned successfully with zero Frame errors in the resulting shell-journal window |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
-| Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
+| Reinstall and beta-ID migration preserve owner-only TV state | PASS | State stayed a real `0700` directory and `0600` file; removal left it byte-identical, and the public reinstall retained working authorization with sanitized online status |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |
 | Optional marketplace preview | N/A | Intentionally omitted; the marketplace permits repositories without one |
 
