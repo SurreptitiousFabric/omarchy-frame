@@ -62,6 +62,9 @@ The same Arch job requires Quickshell runtime loading and QtTest pixel rendering
 instead of permitting either test to skip. `scripts/test-qml-ci.sh` starts a
 one-output, pixman-rendered headless Sway compositor so `PanelWindow` loads
 through the real layer-shell protocol rather than an offscreen Qt substitute.
+The ephemeral Arch container removes Sway's optional `cap_sys_nice` file
+capability after installation because GitHub's restricted container cannot
+grant it; the test does not add container privileges.
 
 Test protocol behavior with in-memory sockets or loopback test servers. Live-TV
 tests must be non-destructive unless the operator explicitly approves the
