@@ -27,27 +27,39 @@ git diff --exit-code -- bin
 scripts/test-release-package.sh
 scripts/test-packaged-runtime.sh
 scripts/test-qml-policy.sh
+scripts/test-qml-render.sh
 scripts/test-qml-types.sh
 scripts/test-qml-runtime.sh
 scripts/test-repository-policy.sh
 scripts/test-release-readiness.sh
 scripts/test-ui-contract.sh
 omarchy plugin validate .
+scripts/test-installed-shell.sh --expect-commit "$(git rev-parse HEAD)"
 ```
 
-The QML runtime script exercises both keyboard behavior in the real tab
-component and creation of the complete `BarWidget.qml` entry point. The widget
-harness supplies inert bar and service doubles, leaves the panel closed, and
-cannot contact a television. It catches entry-point compilation, local
-component contracts, object creation, and invalid bar geometry in the actual
-installed Omarchy runtime.
+The QML runtime script exercises keyboard behavior in the real tab component
+and performs a `BarWidget.qml` component-load smoke test. Its inert bar and
+service doubles leave the panel closed and cannot contact a television. This
+proves entry-point compilation, local component contracts, object creation,
+and nonzero geometry; it does not claim that the installed bar painted pixels.
+
+The QtTest render script uses software rendering and pixel-level assertions at
+24- and 32-pixel logical sizes. It verifies that both antennae, cabinet edges,
+and cabinet buttons paint foreground pixels. The installed-shell script is the
+end-to-end bar check: through supported Omarchy IPC it requires one enabled
+registry record, one effective layout entry, and a visible positive-size live
+widget per Hyprland monitor. `--exercise-panel` additionally summons and hides
+the real panel; opening performs the ordinary read-only status refresh but no
+TV control action. Run that option only in a graphical acceptance session.
 
 The QML type script maps Omarchy's `qs.Commons` and `qs.Ui` directories into a
 standard Qt import tree and rejects unknown local-component properties or
 missing required properties. GitHub Actions runs it in an Arch container with
 official Quickshell and Omarchy QML APIs pinned to commit
 `dec29fa90afc3d16a7e0c487c1869c7e512282ca`. Repository-policy mutations prove
-both contract failures are rejected by the companion QML policy script.
+both type-contract failures are rejected by the companion QML policy script.
+The same Arch job requires Quickshell runtime loading and QtTest pixel rendering
+instead of permitting either test to skip.
 
 Test protocol behavior with in-memory sockets or loopback test servers. Live-TV
 tests must be non-destructive unless the operator explicitly approves the
@@ -61,7 +73,8 @@ the tests never listen beyond `127.0.0.1`.
 ## Release checklist
 
 - Working tree and `git diff --check` clean
-- Tests, race detector, vet, manifest validation, and QML runtime load pass
+- Tests, race detector, vet, manifest validation, QML runtime loading, and icon
+  pixel rendering pass
 - Official Go vulnerability analysis reports no reachable vulnerability
 - Coverage reviewed by function; security/protocol paths cannot regress silently
 - Backend statement coverage remains at least 75%; hardware-only wrappers are
@@ -79,6 +92,8 @@ the tests never listen beyond `127.0.0.1`.
 - Root license present; include `preview.png` only after owner approval of the
   exact image
 - Install and removal tested from a clean checkout
+- Installed-shell registry, effective layout, per-monitor visible geometry,
+  and panel summon/hide checks pass on the exact candidate
 - `ACCEPTANCE.md` matches the exact release candidate and has no unexplained
   pending applicable check
 - `scripts/check-release-readiness.sh v<version>` accepts the clean tag tree;

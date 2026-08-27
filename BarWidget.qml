@@ -199,6 +199,7 @@ Panel {
     opacity: service && service.snapshot.online ? 1 : 0.6
 
     FrameTvIcon {
+        objectName: "frameBarIcon"
         anchors.centerIn: parent
         iconSize: Math.max(Style.bar.iconCanvas, Style.font.icon)
         stroke: root.bar ? root.bar.barForeground : Color.foreground
@@ -206,6 +207,7 @@ Panel {
 
     WidgetButton {
         id: button
+        objectName: "frameBarClickTarget"
         anchors.fill: parent
         bar: root.bar
         text: " "

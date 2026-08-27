@@ -13,6 +13,20 @@ ShellRoot {
         Qt.exit(1);
     }
 
+    function findVisual(item, name) {
+        if (!item)
+            return null;
+        if (item.objectName === name)
+            return item;
+        var descendants = item.children || [];
+        for (var i = 0; i < descendants.length; i++) {
+            var match = findVisual(descendants[i], name);
+            if (match)
+                return match;
+        }
+        return null;
+    }
+
     function loadWidget() {
         var component = Qt.createComponent(Qt.resolvedUrl("BarWidget.qml"), Component.PreferSynchronous);
         if (component.status !== Component.Ready) {
@@ -40,6 +54,17 @@ ShellRoot {
             }
             if (root.widget.implicitWidth <= 0 || root.widget.implicitHeight <= 0) {
                 root.fail("widget has no bar geometry");
+                return;
+            }
+            var icon = root.findVisual(root.widget, "frameBarIcon");
+            if (!icon || icon.visible !== true || icon.opacity <= 0 || icon.width <= 0 || icon.height <= 0) {
+                root.fail("bar icon is absent or invisible");
+                return;
+            }
+            var clickTarget = root.findVisual(root.widget, "frameBarClickTarget");
+            if (!clickTarget || clickTarget.visible !== true || clickTarget.opacity <= 0 ||
+                    clickTarget.width <= 0 || clickTarget.height <= 0) {
+                root.fail("bar click target is absent or inactive");
                 return;
             }
 

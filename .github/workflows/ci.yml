@@ -32,13 +32,17 @@ jobs:
           git -C "$RUNNER_TEMP/omarchy" fetch --depth=1 origin dec29fa90afc3d16a7e0c487c1869c7e512282ca
           git -C "$RUNNER_TEMP/omarchy" checkout --detach FETCH_HEAD
 
-      - name: Validate complete widget QML contracts
+      - name: Validate QML contracts, runtime loading, and rendered icon pixels
         env:
           FRAME_REQUIRE_QMLLINT: "1"
+          FRAME_REQUIRE_QML_RENDER: "1"
+          FRAME_REQUIRE_QUICKSHELL: "1"
         run: |
           export OMARCHY_QML_ROOT="$RUNNER_TEMP/omarchy/shell"
           scripts/test-qml-types.sh
           scripts/test-qml-policy.sh
+          scripts/test-qml-runtime.sh
+          scripts/test-qml-render.sh
 
   verify:
     runs-on: ubuntu-latest

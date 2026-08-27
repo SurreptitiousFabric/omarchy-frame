@@ -50,6 +50,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
   architecture binaries in a deterministic archive.
 - Update `actions/checkout` to immutable v7.0.1 for safer fork handling and
   argument escaping, and reject every mutable remote workflow-action reference.
+- Replace the overstated bar-widget load check with separate component smoke,
+  pixel-render, and installed-shell integration gates; require Quickshell and
+  rendered-icon coverage in the Arch CI and release jobs.
 - Follow Omarchy's shell design system throughout the panel: inherit the active
   bar font, scale fixed geometry with `Style.space()`, compose tab rows from the
   native `ButtonGroup`, and share one theme-aware page button component.
