@@ -35,7 +35,10 @@ jobs:
       - name: Validate complete widget QML contracts
         env:
           FRAME_REQUIRE_QMLLINT: "1"
-        run: OMARCHY_QML_ROOT="$RUNNER_TEMP/omarchy/shell" scripts/test-qml-types.sh
+        run: |
+          export OMARCHY_QML_ROOT="$RUNNER_TEMP/omarchy/shell"
+          scripts/test-qml-types.sh
+          scripts/test-qml-policy.sh
 
   verify:
     runs-on: ubuntu-latest
