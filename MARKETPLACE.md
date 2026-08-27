@@ -17,8 +17,8 @@ Submission requirements last reviewed 2026-08-26 against
 - External runtime dependencies: Omarchy/Quickshell, Omarchy's Zenity file
   chooser, and optional `avahi-browse` discovery fallback; users do not need Go
 
-The marketplace's current static baseline engine was run locally against exact
-candidate `55e95e78cbe1baaa3d0fa7f7c851d0f663eba96d`. It returned
+The marketplace's current static baseline v4 engine was run locally against
+public candidate `ebd38c8e64d03ed41e07c437b4c6cb01ccb31642`. It returned
 `review-required` with no findings and no approval block. Its only capability
 was `bundled-executable-binary`, which is intentional: static ARM64 and AMD64
 backends let users install the plugin without Go. Marketplace publication will

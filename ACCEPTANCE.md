@@ -7,7 +7,7 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `37f16f6`
+- Code and packaging candidate: public commit `ebd38c8`
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -21,29 +21,29 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `37f16f6` |
+| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `ebd38c8` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
-| QML parses and loads in Omarchy shell | PASS | `37f16f6` passed native type contracts, complete-widget creation, visible bar rendering, panel open/close, and fresh-process journal inspection |
+| QML parses and loads in Omarchy shell | PASS | `ebd38c8` passed native type contracts, fail-closed mutations, complete-widget creation, visible bar rendering, panel open/close, fresh-process journal inspection, and the required Arch CI job |
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `37f16f6` |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `ebd38c8` locally, in a clean clone, and in CI |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate untrusted `--no-local` clone of `37f16f6`; race, vet, vulnerability, type, full-widget runtime, manifest, policy, checksum, and no-Go gates passed and left it clean |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate untrusted `--no-local` clone of `ebd38c8`; race, vet, vulnerability, type, QML policy, full-widget runtime, manifest, repository policy, checksum, and no-Go gates passed and left it clean |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
-| Marketplace static security baseline | PENDING | Prior zero-finding baseline covered `55e95e7`; rerun required on the corrected candidate |
-| CI workflow executes remotely | PENDING | New required Arch/QML job and ordinary verification must pass after the corrected candidate is pushed |
+| Marketplace static security baseline | PASS | Baseline v4 on public `ebd38c8`: zero findings, non-blocking `review-required`, expected `bundled-executable-binary` capability only |
+| CI workflow executes remotely | PASS | GitHub Actions run `33046553159` passed both required `qml-contract` and `verify` jobs on `ebd38c8` |
 | Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Exact `37f16f6` local `file://` update under the permanent ID |
+| Git-backed install through `omarchy plugin add` | PASS | Exact `ebd38c8` local `file://` update under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
-| Panel opens without Frame-specific QML/runtime error | PASS | Exact `37f16f6` visible icon plus non-activating IPC open/close and zero Frame errors in the restarted shell journal |
+| Panel opens without Frame-specific QML/runtime error | PASS | Exact `ebd38c8` visible icon plus non-activating IPC open/close and zero Frame errors in the restarted shell journal |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |
