@@ -90,8 +90,8 @@ The backend uses only Go's standard library. Discovery optionally calls
 `avahi-browse`, which is part of a standard Omarchy installation, when Samsung
 SSDP is unavailable. Release builds are static Linux AMD64 and ARM64
 executables; the tracked POSIX launcher selects the matching binary at runtime,
-so users do not need Go. Review the source and reproduce the hashes in
-`bin/SHA256SUMS` before publishing.
+so users do not need Go. The checksum file covers the launcher and both static
+binaries. Review the source and reproduce `bin/SHA256SUMS` before publishing.
 
 The offline command below lists the reviewed feature surface and is also used
 by the packaged-runtime test; it does not need a configured TV:

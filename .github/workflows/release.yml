@@ -47,6 +47,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
@@ -55,10 +57,7 @@ jobs:
           cache: false
 
       - name: Require release-ready metadata
-        shell: bash
-        run: |
-          version=$(jq -r .version manifest.json)
-          [[ $GITHUB_REF_NAME == "v$version" ]]
+        run: scripts/check-release-readiness.sh "$GITHUB_REF_NAME"
 
       - name: Test and build
         run: |
@@ -66,10 +65,19 @@ jobs:
           go vet ./...
           go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
           scripts/build-release.sh
+          git diff --exit-code -- bin
           scripts/validate-repository.sh
           scripts/test-repository-policy.sh
+
+      - name: Package deterministic release archive
+        shell: bash
+        run: |
+          archive="omarchy-frame-${GITHUB_REF_NAME#v}-linux.tar.gz"
+          scripts/package-release.sh "$archive"
+          sha256sum "$archive" > "$archive.sha256"
+          echo "RELEASE_ARCHIVE=$archive" >> "$GITHUB_ENV"
 
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" bin/frame-controller-linux-amd64 bin/frame-controller-linux-arm64 bin/SHA256SUMS --verify-tag --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" bin/frame-controller bin/frame-controller-linux-amd64 bin/frame-controller-linux-arm64 bin/SHA256SUMS "$RELEASE_ARCHIVE" "$RELEASE_ARCHIVE.sha256" --verify-tag --generate-notes

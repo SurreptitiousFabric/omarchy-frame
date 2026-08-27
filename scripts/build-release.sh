@@ -17,5 +17,5 @@ CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -buildvcs=false -trimpath -ldflag
 chmod 0755 "$root/bin/frame-controller" "$root/bin/frame-controller-linux-"*
 (
   cd "$root/bin"
-  sha256sum frame-controller-linux-* > SHA256SUMS
+  sha256sum frame-controller frame-controller-linux-* > SHA256SUMS
 )

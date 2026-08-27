@@ -79,7 +79,9 @@ jobs:
         run: go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 
       - name: Build release binaries
-        run: scripts/build-release.sh
+        run: |
+          scripts/build-release.sh
+          git diff --exit-code -- bin
 
       - name: Validate repository and checksums
         run: |
@@ -87,7 +89,7 @@ jobs:
           scripts/test-repository-policy.sh
 
       - name: Package CI artifact
-        run: tar -C bin -czf omarchy-frame-linux.tar.gz frame-controller frame-controller-linux-amd64 frame-controller-linux-arm64 SHA256SUMS
+        run: scripts/package-release.sh omarchy-frame-linux.tar.gz
 
       - name: Upload CI artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

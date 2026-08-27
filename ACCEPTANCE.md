@@ -3,7 +3,9 @@
 This matrix is the release record for the Samsung Frame plugin. A row is
 **PASS** only when the cited automated or live evidence exercised that behavior.
 Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
-**PENDING**. The release remains pre-1.0 while any applicable row is pending.
+**PENDING**. The release remains pre-1.0 while any applicable row is pending,
+except that the tagged-workflow row may be the sole pending row while that
+workflow is running because the run itself supplies its evidence.
 
 ## Candidate
 
@@ -28,6 +30,7 @@ image, or raw TV response belongs in this file.
 | QML parses and loads in Omarchy shell | PASS | `ebd38c8` passed native type contracts, fail-closed mutations, complete-widget creation, visible bar rendering, panel open/close, fresh-process journal inspection, and the required Arch CI job |
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
+| Deterministic portable release archive | PASS | Mutation-safe packaging test proves identical repeated archives, normalized metadata, and an exact launcher/binaries/checksum allowlist |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 from both the candidate and the installed public checkout |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
@@ -38,6 +41,7 @@ image, or raw TV response belongs in this file.
 | Marketplace static security baseline | PASS | Baseline v4 on public `ebd38c8`: zero findings, non-blocking `review-required`, expected `bundled-executable-binary` capability only |
 | CI workflow executes remotely | PASS | GitHub Actions run `33046553159` passed both required `qml-contract` and `verify` jobs on `ebd38c8` |
 | Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
+| Release guard rejects premature or incoherent tags | PASS | Mutation tests require stable v1+ tag/manifest/acceptance/changelog agreement, a clean tree, candidate ancestry, evidence-only post-candidate changes, and no applicable pending row except the workflow being exercised |
 
 ## Install and shell integration
 
@@ -82,7 +86,9 @@ image, or raw TV response belongs in this file.
 
 ## Release decision
 
-Do not tag `v1.0.0`, submit to the marketplace, or mark this matrix complete
-until every applicable **PENDING** row is passed or the owner explicitly removes
-that capability from the product scope. If a preview is added later,
-marketplace submission also requires approval of that exact image.
+Do not tag `v1.0.0` or submit to the marketplace until every applicable
+**PENDING** row other than the tagged-workflow row is passed or the owner
+explicitly removes that capability from the product scope. The release workflow
+must then be the sole pending row and becomes PASS only after that exact tag run
+succeeds. If a preview is added later, marketplace submission also requires
+approval of that exact image.

@@ -23,11 +23,14 @@ go tool cover -func=coverage.out
 go vet ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 scripts/build-release.sh
+git diff --exit-code -- bin
+scripts/test-release-package.sh
 scripts/test-packaged-runtime.sh
 scripts/test-qml-policy.sh
 scripts/test-qml-types.sh
 scripts/test-qml-runtime.sh
 scripts/test-repository-policy.sh
+scripts/test-release-readiness.sh
 scripts/test-ui-contract.sh
 omarchy plugin validate .
 ```
@@ -65,7 +68,11 @@ the tests never listen beyond `127.0.0.1`.
   exercised by the live acceptance matrix
 - ARM64 and AMD64 binaries rebuilt with CGO disabled and `-trimpath`
 - Tracked launcher selects the native release binary on both supported architectures
-- `SHA256SUMS` reproduced and verified
+- `SHA256SUMS` covers the launcher and both binaries and verifies successfully
+- Rebuilding leaves every tracked launcher, binary, and checksum byte-identical
+- The compressed release bundle has an allowlisted payload and reproducible
+  ordering, release-asset-derived timestamp, ownership, and gzip metadata, so
+  evidence-only commits do not alter its bytes
 - No symlinks, unexpected executables, world-writable files, or secrets
 - README/manual/capability limitations match the tested firmware
 - Root license present; include `preview.png` only after owner approval of the
@@ -73,12 +80,20 @@ the tests never listen beyond `127.0.0.1`.
 - Install and removal tested from a clean checkout
 - `ACCEPTANCE.md` matches the exact release candidate and has no unexplained
   pending applicable check
+- `scripts/check-release-readiness.sh v<version>` accepts the clean tag tree;
+  it permits only the tagged-workflow row to remain pending because that row is
+  proven by the workflow currently running
 - Publication and marketplace submission performed only with owner approval
 - Current marketplace baseline result and any review capabilities are recorded
   against the exact candidate commit
 
 ## Versioning
 
-Update `manifest.json` and documentation together. Protocol behavior changes
-require tests. Security fixes require a clear changelog entry once releases are
-public. Do not silently broaden accepted network targets or commands.
+Update `manifest.json`, `ACCEPTANCE.md`, and the dated `CHANGELOG.md` release
+section together. Tagged releases must use stable `vMAJOR.MINOR.PATCH` versions
+at or above 1.0.0. The release workflow fails closed on version drift, a dirty
+tree, unavailable or non-ancestor candidates, post-candidate runtime/packaging
+changes, and every applicable pending acceptance row other than its own
+self-referential tagged-workflow check. Protocol behavior changes require tests.
+Security fixes require a clear changelog entry once releases are public. Do not
+silently broaden accepted network targets or commands.
