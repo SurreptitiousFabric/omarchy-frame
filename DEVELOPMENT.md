@@ -74,6 +74,7 @@ the tests never listen beyond `127.0.0.1`.
   ordering, release-asset-derived timestamp, ownership, and gzip metadata, so
   evidence-only commits do not alter its bytes
 - No symlinks, unexpected executables, world-writable files, or secrets
+- Every remote GitHub Action uses an immutable full 40-character commit pin
 - README/manual/capability limitations match the tested firmware
 - Root license present; include `preview.png` only after owner approval of the
   exact image

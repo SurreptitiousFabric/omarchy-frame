@@ -48,6 +48,8 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
   version/changelog coherence, clean-tree state, and reproducible tracked
   artifacts; checksum and publish the portable launcher with both static
   architecture binaries in a deterministic archive.
+- Update `actions/checkout` to immutable v7.0.1 for safer fork handling and
+  argument escaping, and reject every mutable remote workflow-action reference.
 - Follow Omarchy's shell design system throughout the panel: inherit the active
   bar font, scale fixed geometry with `Style.space()`, compose tab rows from the
   native `ButtonGroup`, and share one theme-aware page button component.

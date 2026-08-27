@@ -45,6 +45,23 @@ if grep -R -n -E 'github\.com/(OWNER|YOUR[-_A-Z]*|your[_-]?github)|BEGIN (RSA |E
   exit 1
 fi
 
+while IFS= read -r action; do
+  if [[ $action == ./* ]]; then
+    continue
+  fi
+  if [[ ! $action =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_./-]+@[0-9a-f]{40}$ ]]; then
+    echo "validate-repository: remote action is not pinned to a full commit: $action" >&2
+    exit 1
+  fi
+done < <(awk '
+  /^[[:space:]]*uses:[[:space:]]*/ {
+    action = $0
+    sub(/^[[:space:]]*uses:[[:space:]]*/, "", action)
+    sub(/[[:space:]]+#.*$/, "", action)
+    print action
+  }
+' .github/workflows/*.yml)
+
 sh -n bin/frame-controller
 bash -n scripts/build-release.sh scripts/check-release-readiness.sh scripts/package-release.sh scripts/test-packaged-runtime.sh scripts/test-qml-policy.sh scripts/test-qml-runtime.sh scripts/test-qml-types.sh scripts/test-release-package.sh scripts/test-release-readiness.sh scripts/test-repository-policy.sh scripts/test-ui-contract.sh scripts/validate-repository.sh
 

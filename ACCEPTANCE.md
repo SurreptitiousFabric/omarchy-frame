@@ -39,6 +39,7 @@ image, or raw TV response belongs in this file.
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
 | Marketplace static security baseline | PASS | Marker protocol v4 / policy 3 on public `1f1ef48`: one valid root plugin, zero findings, non-blocking `review-required`, and expected `bundled-executable-binary` capability only |
 | CI workflow executes remotely | PASS | GitHub Actions run `33049751610` passed required `qml-contract` and `verify` jobs on exact `1f1ef48`, including deterministic package upload |
+| GitHub Actions use immutable full-SHA pins | PASS | Repository validation rejects mutable remote action references; checkout is pinned to official v7.0.1 commit `3d3c42e5aac5ba805825da76410c181273ba90b1` |
 | Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
 | Release guard rejects premature or incoherent tags | PASS | Exact `1f1ef48` mutation tests require stable v1+ tag/manifest/acceptance/changelog agreement, a clean tree, candidate ancestry, evidence-only post-candidate changes, and no applicable pending row except the workflow being exercised; a restricted-PATH case proves runner portability |
 

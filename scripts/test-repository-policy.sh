@@ -50,6 +50,11 @@ target=$(new_case placeholder-url)
 printf '\nhttps://github.com/OWNER/omarchy-frame\n' >>"$target/README.md"
 expect_rejected "placeholder repository URL" "$target"
 
+target=$(new_case mutable-workflow-action)
+sed -i -E '0,/actions\/checkout@[0-9a-f]{40}/s//actions\/checkout@v7/' \
+  "$target/.github/workflows/ci.yml"
+expect_rejected "mutable workflow action" "$target"
+
 target=$(new_case hardcoded-ui-font)
 sed -i 's/bar ? bar.fontFamily : Style.font.family/"sans-serif"/' "$target/BarWidget.qml"
 expect_rejected "hard-coded UI font" "$target"
