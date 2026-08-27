@@ -9,9 +9,8 @@ workflow is running because the run itself supplies its evidence.
 
 ## Candidate
 
-- Code and packaging candidate: public commit `ebd38c8`
-- Installed public checkout: commit `1d5d949` cloned from public GitHub; only
-  this acceptance record and marketplace evidence differ from the code candidate
+- Code and packaging candidate: public commit `1f1ef48`
+- Installed public checkout: exact candidate `1f1ef48` from public GitHub
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
@@ -25,33 +24,38 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `ebd38c8` |
+| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `1f1ef48` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
-| QML parses and loads in Omarchy shell | PASS | `ebd38c8` passed native type contracts, fail-closed mutations, complete-widget creation, visible bar rendering, panel open/close, fresh-process journal inspection, and the required Arch CI job |
+| QML parses and loads in Omarchy shell | PASS | `1f1ef48` passed native type contracts, fail-closed mutations, complete-widget creation, visible bar rendering, installed panel open/close, fresh journal inspection, clean-clone validation, and the required Arch CI job |
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
-| Deterministic portable release archive | PASS | Mutation-safe packaging test proves identical repeated archives, normalized metadata, and an exact launcher/binaries/checksum allowlist |
+| Deterministic portable release archive | PASS | Exact `1f1ef48` tests prove identical repeated archives, normalized metadata, an exact launcher/binaries/checksum allowlist, and byte stability across evidence-only commits; CI packaged and uploaded the archive |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 from both the candidate and the installed public checkout |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `ebd38c8` locally, in a clean clone, and in CI |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `1f1ef48` locally, in a clean clone, and in CI |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate untrusted `--no-local` clone of `ebd38c8`; race, vet, vulnerability, type, QML policy, full-widget runtime, manifest, repository policy, checksum, and no-Go gates passed and left it clean |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate untrusted `--no-local` clone of `1f1ef48`; race, vet, vulnerability, ShellCheck, workflow, release-policy, archive, type, QML policy, full-widget runtime, manifest, repository policy, checksum, and no-Go gates passed and left it clean |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
-| Marketplace static security baseline | PASS | Baseline v4 on public `ebd38c8`: zero findings, non-blocking `review-required`, expected `bundled-executable-binary` capability only |
-| CI workflow executes remotely | PASS | GitHub Actions run `33046553159` passed both required `qml-contract` and `verify` jobs on `ebd38c8` |
+| Marketplace static security baseline | PASS | Marker protocol v4 / policy 3 on public `1f1ef48`: one valid root plugin, zero findings, non-blocking `review-required`, and expected `bundled-executable-binary` capability only |
+| CI workflow executes remotely | PASS | GitHub Actions run `33049751610` passed required `qml-contract` and `verify` jobs on exact `1f1ef48`, including deterministic package upload |
 | Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
-| Release guard rejects premature or incoherent tags | PASS | Mutation tests require stable v1+ tag/manifest/acceptance/changelog agreement, a clean tree, candidate ancestry, evidence-only post-candidate changes, and no applicable pending row except the workflow being exercised |
+| Release guard rejects premature or incoherent tags | PASS | Exact `1f1ef48` mutation tests require stable v1+ tag/manifest/acceptance/changelog agreement, a clean tree, candidate ancestry, evidence-only post-candidate changes, and no applicable pending row except the workflow being exercised; a restricted-PATH case proves runner portability |
+
+The first guard candidate `f08c26d` failed remote run `33049506978` because it
+assumed `rg` existed in the Ubuntu verification job. Candidate `1f1ef48` uses
+standard `grep`, adds a restricted-PATH regression, and passed the corrected
+remote run above. No failed candidate is release evidence.
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Public GitHub install through `omarchy plugin add` | PASS | Removed the local-source clone and installed public commit `1d5d949` from the documented GitHub URL; a transient Omarchy discovery race required one rescan/retry |
+| Public GitHub install through `omarchy plugin add` | PASS | Removed the local-source clone, installed public commit `1d5d949` from the documented GitHub URL, then updated through the same public origin to exact candidate `1f1ef48`; a transient initial Omarchy discovery race required one rescan/retry |
 | Enable in right bar section | PASS | Full right-bar order was unchanged after reinstall; the Frame remained between the tray and agents widgets |
-| Panel opens without Frame-specific QML/runtime error | PASS | Installed public checkout passed complete-widget creation; live non-activating IPC summon/hide returned successfully with zero Frame errors in the resulting shell-journal window |
+| Panel opens without Frame-specific QML/runtime error | PASS | Installed exact candidate passed complete-widget creation; live non-activating IPC summon/hide returned successfully with zero Frame errors in the resulting shell-journal window |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
-| Reinstall and beta-ID migration preserve owner-only TV state | PASS | State stayed a real `0700` directory and `0600` file; removal left it byte-identical, and the public reinstall retained working authorization with sanitized online status |
+| Reinstall and beta-ID migration preserve owner-only TV state | PASS | State stayed a real `0700` directory and `0600` file; removal and exact-candidate update left it byte-identical, and sanitized status remained usable online earlier and honestly reported offline during final candidate acceptance |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |
 | Optional marketplace preview | N/A | Intentionally omitted; the marketplace permits repositories without one |
 
