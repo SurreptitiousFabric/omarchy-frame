@@ -324,6 +324,7 @@ Panel {
                         service: root.service
                         frameForeground: root.panelForeground
                         frameDim: root.panelDim
+                        softFill: root.softFill
                         uiFont: root.uiFont
                     }
 
@@ -346,7 +347,6 @@ Panel {
                         service: root.service
                         frameForeground: root.panelForeground
                         frameDim: root.panelDim
-                        softFill: root.softFill
                         uiFont: root.uiFont
                     }
                 }

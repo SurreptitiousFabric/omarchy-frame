@@ -24,11 +24,26 @@ go vet ./...
 go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 scripts/build-release.sh
 scripts/test-packaged-runtime.sh
+scripts/test-qml-types.sh
 scripts/test-qml-runtime.sh
 scripts/test-repository-policy.sh
 scripts/test-ui-contract.sh
 omarchy plugin validate .
 ```
+
+The QML runtime script exercises both keyboard behavior in the real tab
+component and creation of the complete `BarWidget.qml` entry point. The widget
+harness supplies inert bar and service doubles, leaves the panel closed, and
+cannot contact a television. It catches entry-point compilation, local
+component contracts, object creation, and invalid bar geometry in the actual
+installed Omarchy runtime.
+
+The QML type script maps Omarchy's `qs.Commons` and `qs.Ui` directories into a
+standard Qt import tree and rejects unknown local-component properties or
+missing required properties. GitHub Actions runs it in an Arch container with
+official Quickshell and Omarchy QML APIs pinned to commit
+`dec29fa90afc3d16a7e0c487c1869c7e512282ca`. Repository-policy mutations prove
+both contract failures are rejected.
 
 Test protocol behavior with in-memory sockets or loopback test servers. Live-TV
 tests must be non-destructive unless the operator explicitly approves the

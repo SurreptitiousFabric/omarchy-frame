@@ -19,20 +19,33 @@ case $work in
 esac
 trap 'rm -rf -- "$work"' EXIT
 
-cp tests/FrameTabGroupTest.qml "$work/shell.qml"
+cp tests/FrameTabGroupTest.qml "$work/FrameTabGroupTest.qml"
+cp tests/BarWidgetTest.qml "$work/BarWidgetTest.qml"
+cp BarWidget.qml "$work/BarWidget.qml"
 cp -a components "$work/components"
 ln -s /usr/share/omarchy/shell/Commons "$work/Commons"
 ln -s /usr/share/omarchy/shell/Ui "$work/Ui"
 
-set +e
-output=$(timeout 10 quickshell --no-duplicate --no-color --path "$work/shell.qml" 2>&1)
-status=$?
-set -e
+run_test() {
+  local file=$1
+  local pass_marker=$2
+  local failure_message=$3
+  local output status
 
-printf '%s\n' "$output"
-if (( status != 0 )) || grep -Fq 'FRAME_TAB_TEST_FAIL' <<<"$output" || ! grep -Fq 'FRAME_TAB_TEST_PASS' <<<"$output"; then
-  echo "test-qml-runtime: Frame tab navigation failed" >&2
-  exit 1
-fi
+  cp "$work/$file" "$work/shell.qml"
+  set +e
+  output=$(timeout 10 quickshell --no-duplicate --no-color --path "$work/shell.qml" 2>&1)
+  status=$?
+  set -e
 
-echo "Quickshell Frame tab navigation passed"
+  printf '%s\n' "$output"
+  if (( status != 0 )) || grep -Fq "${pass_marker%_PASS}_FAIL" <<<"$output" || ! grep -Fq "$pass_marker" <<<"$output"; then
+    echo "test-qml-runtime: $failure_message" >&2
+    exit 1
+  fi
+}
+
+run_test FrameTabGroupTest.qml FRAME_TAB_TEST_PASS "Frame tab navigation failed"
+run_test BarWidgetTest.qml FRAME_BAR_WIDGET_TEST_PASS "complete BarWidget failed to load"
+
+echo "Quickshell Frame tab navigation and complete BarWidget load passed"

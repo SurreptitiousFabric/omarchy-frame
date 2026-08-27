@@ -13,7 +13,32 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  qml-contract:
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    timeout-minutes: 10
+    steps:
+      - name: Install QML validation dependencies
+        run: pacman -Syu --noconfirm git quickshell qt6-declarative
+
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Check out pinned Omarchy QML APIs
+        shell: bash
+        run: |
+          git init "$RUNNER_TEMP/omarchy"
+          git -C "$RUNNER_TEMP/omarchy" remote add origin https://github.com/basecamp/omarchy.git
+          git -C "$RUNNER_TEMP/omarchy" fetch --depth=1 origin dec29fa90afc3d16a7e0c487c1869c7e512282ca
+          git -C "$RUNNER_TEMP/omarchy" checkout --detach FETCH_HEAD
+
+      - name: Validate complete widget QML contracts
+        env:
+          FRAME_REQUIRE_QMLLINT: "1"
+        run: OMARCHY_QML_ROOT="$RUNNER_TEMP/omarchy/shell" scripts/test-qml-types.sh
+
   release:
+    needs: qml-contract
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

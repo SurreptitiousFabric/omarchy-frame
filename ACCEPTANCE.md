@@ -23,7 +23,7 @@ image, or raw TV response belongs in this file.
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
 | Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `55e95e7` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
-| QML parses and loads in Omarchy shell | PASS | Live shell load/render with no Frame QML error plus windowless Quickshell component execution |
+| QML parses and loads in Omarchy shell | PENDING | Prior tab-only harness missed a complete-entry-point type error; requires corrected exact-candidate type, full-widget, and live-shell evidence |
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
@@ -31,7 +31,7 @@ image, or raw TV response belongs in this file.
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
 | Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `55e95e7` |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
-| Clean Git checkout validates and runs packaged backend | PASS | Separate `--no-local` clone of `55e95e7`; race, vet, vulnerability, QML runtime, manifest, repository policy, checksum, and no-Go gates passed |
+| Clean Git checkout validates and runs packaged backend | PENDING | Prior `55e95e7` clone used the incomplete tab-only QML harness; requires a corrected clean-clone rerun |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
 | Marketplace static security baseline | PASS | Current engine on exact `55e95e7`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
 | CI workflow executes remotely | PASS | GitHub Actions run `33003748420` passed on public `main` at `de6903b` |
@@ -43,7 +43,7 @@ image, or raw TV response belongs in this file.
 |---|---|---|
 | Git-backed install through `omarchy plugin add` | PASS | Exact `55e95e7` local `file://` install/update under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
-| Panel opens without Frame-specific QML/runtime error | PASS | Live shell IPC smoke test |
+| Panel opens without Frame-specific QML/runtime error | PENDING | Installed `55e95e7` is rejected by Quickshell; requires corrected exact-candidate live reload and journal inspection |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |

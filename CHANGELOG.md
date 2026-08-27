@@ -23,6 +23,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 ### Fixed
 
+- Restore the complete bar widget after page-property wiring drift prevented
+  Quickshell from loading it; add full-entry-point creation, native QML type
+  contracts, fail-closed mutations, and required Arch/Omarchy CI coverage.
 - Distinguish an unreachable TV from a confirmed TV/Art state.
 - Make the header Off action perform a deliberate power hold and label the
   short action as TV / Art.
