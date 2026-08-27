@@ -59,7 +59,9 @@ official Quickshell and Omarchy QML APIs pinned to commit
 `dec29fa90afc3d16a7e0c487c1869c7e512282ca`. Repository-policy mutations prove
 both type-contract failures are rejected by the companion QML policy script.
 The same Arch job requires Quickshell runtime loading and QtTest pixel rendering
-instead of permitting either test to skip.
+instead of permitting either test to skip. `scripts/test-qml-ci.sh` starts a
+one-output, pixman-rendered headless Sway compositor so `PanelWindow` loads
+through the real layer-shell protocol rather than an offscreen Qt substitute.
 
 Test protocol behavior with in-memory sockets or loopback test servers. Live-TV
 tests must be non-destructive unless the operator explicitly approves the

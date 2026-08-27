@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Install QML validation dependencies
-        run: pacman -Syu --noconfirm git quickshell qt6-declarative
+        run: pacman -Syu --noconfirm git quickshell qt6-declarative sway
 
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -33,16 +33,9 @@ jobs:
           git -C "$RUNNER_TEMP/omarchy" checkout --detach FETCH_HEAD
 
       - name: Validate QML contracts, runtime loading, and rendered icon pixels
-        env:
-          FRAME_REQUIRE_QMLLINT: "1"
-          FRAME_REQUIRE_QML_RENDER: "1"
-          FRAME_REQUIRE_QUICKSHELL: "1"
         run: |
           export OMARCHY_QML_ROOT="$RUNNER_TEMP/omarchy/shell"
-          scripts/test-qml-types.sh
-          scripts/test-qml-policy.sh
-          scripts/test-qml-runtime.sh
-          scripts/test-qml-render.sh
+          scripts/test-qml-ci.sh
 
   release:
     needs: qml-contract

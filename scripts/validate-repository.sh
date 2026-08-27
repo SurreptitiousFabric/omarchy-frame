@@ -31,7 +31,7 @@ fi
 
 while IFS= read -r executable; do
   case $executable in
-    ./bin/frame-controller|./bin/frame-controller-linux-amd64|./bin/frame-controller-linux-arm64|./scripts/build-release.sh|./scripts/check-release-readiness.sh|./scripts/package-release.sh|./scripts/test-installed-shell.sh|./scripts/test-packaged-runtime.sh|./scripts/test-qml-policy.sh|./scripts/test-qml-render.sh|./scripts/test-qml-runtime.sh|./scripts/test-qml-types.sh|./scripts/test-release-package.sh|./scripts/test-release-readiness.sh|./scripts/test-repository-policy.sh|./scripts/test-ui-contract.sh|./scripts/validate-repository.sh) ;;
+    ./bin/frame-controller|./bin/frame-controller-linux-amd64|./bin/frame-controller-linux-arm64|./scripts/build-release.sh|./scripts/check-release-readiness.sh|./scripts/package-release.sh|./scripts/test-installed-shell.sh|./scripts/test-packaged-runtime.sh|./scripts/test-qml-ci.sh|./scripts/test-qml-policy.sh|./scripts/test-qml-render.sh|./scripts/test-qml-runtime.sh|./scripts/test-qml-types.sh|./scripts/test-release-package.sh|./scripts/test-release-readiness.sh|./scripts/test-repository-policy.sh|./scripts/test-ui-contract.sh|./scripts/validate-repository.sh) ;;
     *)
       echo "validate-repository: unexpected executable $executable" >&2
       exit 1
@@ -63,7 +63,7 @@ done < <(awk '
 ' .github/workflows/*.yml)
 
 sh -n bin/frame-controller
-bash -n scripts/build-release.sh scripts/check-release-readiness.sh scripts/package-release.sh scripts/test-installed-shell.sh scripts/test-packaged-runtime.sh scripts/test-qml-policy.sh scripts/test-qml-render.sh scripts/test-qml-runtime.sh scripts/test-qml-types.sh scripts/test-release-package.sh scripts/test-release-readiness.sh scripts/test-repository-policy.sh scripts/test-ui-contract.sh scripts/validate-repository.sh
+bash -n scripts/build-release.sh scripts/check-release-readiness.sh scripts/package-release.sh scripts/test-installed-shell.sh scripts/test-packaged-runtime.sh scripts/test-qml-ci.sh scripts/test-qml-policy.sh scripts/test-qml-render.sh scripts/test-qml-runtime.sh scripts/test-qml-types.sh scripts/test-release-package.sh scripts/test-release-readiness.sh scripts/test-repository-policy.sh scripts/test-ui-contract.sh scripts/validate-repository.sh
 
 scripts/test-ui-contract.sh
 scripts/test-qml-types.sh
