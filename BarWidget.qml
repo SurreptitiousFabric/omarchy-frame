@@ -21,16 +21,38 @@ Panel {
     readonly property color panelDim: Qt.darker(panelForeground, 1.45)
     readonly property color softFill: Style.normalFillFor(panelForeground, Color.accent)
     readonly property string uiFont: bar ? bar.fontFamily : Style.font.family
-    readonly property string mode: {
-        if (!service || !service.snapshot || !service.snapshot.ok)
+    function modeFor(snapshot) {
+        if (!snapshot || !snapshot.ok)
             return "unknown";
-        if (!service.snapshot.online)
+        if (!snapshot.online)
             return "offline";
-        var value = String(service.snapshot.mode || "unknown").toLowerCase();
+        var value = String(snapshot.mode || "unknown").toLowerCase();
         return value === "art" || value === "tv" ? value : "unknown";
     }
-    readonly property string modeLabel: mode === "art" ? "ART" : mode === "tv" ? "TV" : mode === "offline" ? "OFFLINE" : "ART / TV?"
-    readonly property string modeTooltip: mode === "art" ? "Samsung Frame · Art Mode" : mode === "tv" ? "Samsung Frame · watching TV" : mode === "offline" ? "Samsung Frame · unreachable" : service && service.snapshot && service.snapshot.ok ? "Samsung Frame · online · Samsung did not report a reliable mode" : "Samsung Frame · checking status"
+    function modeLabelFor(snapshot) {
+        var value = modeFor(snapshot);
+        if (value === "art")
+            return "ART";
+        if (value === "tv")
+            return "TV";
+        if (value === "offline")
+            return "OFFLINE";
+        return snapshot && snapshot.ok && snapshot.online ? "ON" : "…";
+    }
+    function modeTooltipFor(snapshot) {
+        var value = modeFor(snapshot);
+        if (value === "art")
+            return "Samsung Frame · Art Mode";
+        if (value === "tv")
+            return "Samsung Frame · watching TV";
+        if (value === "offline")
+            return "Samsung Frame · unreachable";
+        return snapshot && snapshot.ok && snapshot.online ? "Samsung Frame · online · Samsung did not report a reliable TV or Art mode" : "Samsung Frame · checking status";
+    }
+    readonly property var currentSnapshot: service ? service.snapshot : null
+    readonly property string mode: modeFor(currentSnapshot)
+    readonly property string modeLabel: modeLabelFor(currentSnapshot)
+    readonly property string modeTooltip: modeTooltipFor(currentSnapshot)
 
     property string page: "remote"
     property string pendingDeleteID: ""

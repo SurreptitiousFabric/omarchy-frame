@@ -33,7 +33,9 @@ trap 'rm -rf -- "$work"' EXIT
 
 cp tests/FrameTabGroupTest.qml "$work/FrameTabGroupTest.qml"
 cp tests/BarWidgetTest.qml "$work/BarWidgetTest.qml"
+cp tests/ServiceStatusTest.qml "$work/ServiceStatusTest.qml"
 cp BarWidget.qml "$work/BarWidget.qml"
+cp Service.qml "$work/Service.qml"
 cp -a components "$work/components"
 ln -s "$omarchy_qml_root/Commons" "$work/Commons"
 ln -s "$omarchy_qml_root/Ui" "$work/Ui"
@@ -59,5 +61,6 @@ run_test() {
 
 run_test FrameTabGroupTest.qml FRAME_TAB_TEST_PASS "Frame tab navigation failed"
 run_test BarWidgetTest.qml FRAME_BAR_WIDGET_TEST_PASS "BarWidget component-load smoke test failed"
+run_test ServiceStatusTest.qml FRAME_SERVICE_STATUS_TEST_PASS "Frame status wording test failed"
 
-echo "Quickshell Frame tab navigation and BarWidget component-load smoke test passed"
+echo "Quickshell Frame tab navigation, status wording, and BarWidget component-load tests passed"

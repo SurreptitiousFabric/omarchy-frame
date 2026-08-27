@@ -36,4 +36,15 @@ if grep -R -n -E 'component[[:space:]]+(SoftButton|QuietButton):' components --i
   exit 1
 fi
 
+if grep -Fq 'Connected · mode unavailable' Service.qml || grep -Fq 'ART / TV?' BarWidget.qml; then
+  echo "test-ui-contract: internal mode uncertainty must not lead the user-facing status" >&2
+  exit 1
+fi
+
+if ! grep -Fq 'return snapshot && snapshot.ok && snapshot.online ? "ON" : "…";' BarWidget.qml ||
+   ! grep -Fq 'return "Connected · TV on"' Service.qml; then
+  echo "test-ui-contract: online status must lead with known TV state" >&2
+  exit 1
+fi
+
 echo "Omarchy UI contract is satisfied"

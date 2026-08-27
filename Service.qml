@@ -37,6 +37,16 @@ Item {
     return value.length > 180 ? value.substring(0, 177) + "…" : value
   }
 
+  function statusMessage(result) {
+    if (!result || !result.online)
+      return "TV is offline"
+    var mode = String(result.mode || "unknown").toLowerCase()
+    var power = String(result.power || "unknown").toLowerCase()
+    if (mode === "unknown" && power === "on")
+      return "Connected · TV on"
+    return "Connected locally"
+  }
+
   function run(args, success) {
     if (backend === "") {
       error = "Controller is still loading"
@@ -134,7 +144,7 @@ Item {
         root.snapshot = result
         root.capabilities = result.capabilities || []
         root.error = ""
-        root.message = result.online ? (result.mode === "unknown" ? "Connected · mode unavailable" : "Connected locally") : "TV is offline"
+        root.message = root.statusMessage(result)
       } else {
         root.error = root.compact((result && result.error) || statusErr.text || "TV not configured")
         if (root.devices.length === 0)

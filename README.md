@@ -13,8 +13,8 @@ Frame TVs. It is developed against the European 2022 55-inch Frame
 - Owner-selected JPEG/PNG upload to Samsung **My Photos**, confirmed deletion
   of My Photos, plus built-in sequential and shuffled slideshow controls
 - Deliberate three-second power-off hold and Wake-on-LAN
-- Live header status distinguishes TV, Art Mode, unreachable, and unavailable
-  mode data
+- Live status leads with known facts: TV, Art Mode, on, or unreachable; ambiguous
+  firmware mode data is explained only in secondary detail
 - Navigation, volume, mute, channel, media, menu, source, and other explicitly
   allowed Samsung remote keys
 - Task-focused Remote, Art, Photos, and Setup tabs; Remote adds Navigate,
@@ -131,9 +131,10 @@ numeric IP and Samsung port 8002.
 
 Samsung's undocumented Art protocol and application REST endpoint vary across
 firmware. Ordinary remote control remains usable when those endpoints are
-absent; the header reports **ART / TV?** instead of guessing when the optional
-Art-status request is unavailable or ambiguous. Tested LS03B firmware can
-return `off` while visibly displaying artwork. Rotation toggles orientation
+absent; the status reports **ON** instead of guessing when the optional
+Art-status request is unavailable or ambiguous, with the limitation explained
+in its tooltip. Tested LS03B firmware can return `off` while visibly displaying
+artwork. Rotation toggles orientation
 because the LS03B API does not report a reliable physical orientation state.
 
 ## Marketplace

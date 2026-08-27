@@ -13,6 +13,11 @@ ShellRoot {
         Qt.exit(1);
     }
 
+    function expectEqual(actual, expected, message) {
+        if (actual !== expected)
+            fail(message + ": got " + actual + ", expected " + expected);
+    }
+
     function findVisual(item, name) {
         if (!item)
             return null;
@@ -56,6 +61,14 @@ ShellRoot {
                 root.fail("widget has no bar geometry");
                 return;
             }
+            root.expectEqual(root.widget.modeLabelFor({ok: false}), "…", "checking label");
+            root.expectEqual(root.widget.modeLabelFor({ok: true, online: false, mode: "offline"}), "OFFLINE", "offline label");
+            root.expectEqual(root.widget.modeLabelFor({ok: true, online: true, mode: "art"}), "ART", "Art label");
+            root.expectEqual(root.widget.modeLabelFor({ok: true, online: true, mode: "tv"}), "TV", "TV label");
+            root.expectEqual(root.widget.modeLabelFor({ok: true, online: true, mode: "unknown"}), "ON", "ambiguous online label");
+            root.expectEqual(root.widget.modeTooltipFor({ok: true, online: true, mode: "unknown"}),
+                    "Samsung Frame · online · Samsung did not report a reliable TV or Art mode",
+                    "ambiguous online tooltip");
             var icon = root.findVisual(root.widget, "frameBarIcon");
             if (!icon || icon.visible !== true || icon.opacity <= 0 || icon.width <= 0 || icon.height <= 0) {
                 root.fail("bar icon is absent or invisible");
