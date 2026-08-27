@@ -51,7 +51,7 @@ mapfile -t acceptance_versions < <(awk '
   fail "acceptance record must contain exactly one plugin version"
 [[ ${acceptance_versions[0]} == "$version" ]] ||
   fail "acceptance version '${acceptance_versions[0]}' does not match manifest '$version'"
-if rg -q '^- Plugin: .*\(pre-1\.0\)$' ACCEPTANCE.md; then
+if grep -Eq '^- Plugin: .*\(pre-1\.0\)$' ACCEPTANCE.md; then
   fail "acceptance record still marks the plugin pre-1.0"
 fi
 
@@ -79,7 +79,7 @@ done <ACCEPTANCE.md
   fail "acceptance matrix must contain exactly one tagged-workflow row"
 
 version_re=${version//./\\.}
-rg -q "^## \\[?${version_re}\\]? - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md ||
+grep -Eq "^## \\[?${version_re}\\]? - [0-9]{4}-[0-9]{2}-[0-9]{2}$" CHANGELOG.md ||
   fail "changelog has no dated section for $version"
 
 mapfile -t candidates < <(awk '

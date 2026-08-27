@@ -86,6 +86,17 @@ expect_rejected() {
 ready=$(prepare_ready ready)
 (cd "$ready" && ./scripts/check-release-readiness.sh v1.0.0 >/dev/null)
 
+restricted_bin="$work/restricted-bin"
+mkdir -p "$restricted_bin"
+for command in awk basename bash dirname git grep jq sed; do
+  command_path=$(command -v "$command")
+  ln -s "$command_path" "$restricted_bin/$command"
+done
+(
+  cd "$ready"
+  env PATH="$restricted_bin" ./scripts/check-release-readiness.sh v1.0.0 >/dev/null
+)
+
 target=$(clone_case "$ready" pending-check)
 sed -i '0,/| PASS |/s//| PENDING |/' "$target/ACCEPTANCE.md"
 commit_case "$target" "Restore pending acceptance"
