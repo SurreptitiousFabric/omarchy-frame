@@ -64,7 +64,7 @@ fi
 if ! XDG_RUNTIME_DIR=$runtime \
   WAYLAND_DISPLAY=$wayland_socket \
   QT_QPA_PLATFORM=wayland \
-  QSG_RHI_BACKEND=software \
+  QT_QUICK_BACKEND=software \
   FRAME_REQUIRE_QUICKSHELL=1 \
   scripts/test-qml-runtime.sh; then
   echo "test-qml-ci: Quickshell runtime test failed under headless Sway" >&2

@@ -23,7 +23,7 @@ if [[ -z $runner || ! -x $runner ]]; then
 fi
 
 QT_QPA_PLATFORM=${FRAME_QML_PLATFORM:-offscreen} \
-QSG_RHI_BACKEND=${FRAME_QML_RHI_BACKEND:-software} \
+QT_QUICK_BACKEND=${FRAME_QML_QUICK_BACKEND:-software} \
 QT_SCALE_FACTOR=1 \
 GDK_SCALE=1 \
   "$runner" -input tests/tst_FrameTvIcon.qml
