@@ -7,11 +7,11 @@ Unsupported hardware behavior is **N/A**; an applicable unverified behavior is
 
 ## Candidate
 
-- Code and packaging candidate: local commit `55e95e7`
+- Code and packaging candidate: local commit `37f16f6`
 - Plugin: `io.github.surreptitiousfabric.omarchy-frame` 0.6.0 (pre-1.0)
 - TV: Samsung `QE55LS03BAUXXH` / LS03B, firmware 1720.7
 - Host: Omarchy on ARM64
-- Date: 2026-08-26
+- Date: 2026-08-27
 
 No private address, MAC address, pairing token, content identifier, personal
 image, or raw TV response belongs in this file.
@@ -21,29 +21,29 @@ image, or raw TV response belongs in this file.
 | Check | Status | Evidence |
 |---|---|---|
 | Go formatting, race detector, tests, vet | PASS | Local release-candidate run |
-| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `55e95e7` |
+| Backend statement coverage at least 75% | PASS | 76.3% backend / 76.4% repository total on `37f16f6` |
 | Explicit remote click/hold allowlists and QML parity | PASS | Automated contract tests |
-| QML parses and loads in Omarchy shell | PENDING | Prior tab-only harness missed a complete-entry-point type error; requires corrected exact-candidate type, full-widget, and live-shell evidence |
+| QML parses and loads in Omarchy shell | PASS | `37f16f6` passed native type contracts, complete-widget creation, visible bar rendering, panel open/close, and fresh-process journal inspection |
 | Omarchy design-system contract | PASS | Native panel/control primitives, inherited bar font, scaled geometry, shared controls, native grouped tabs, negative policy tests, and runtime tab-state test |
 | Static ARM64 and AMD64 release binaries | PASS | Reproducible builds and `file` inspection |
 | Relative checksums verify | PASS | `scripts/validate-repository.sh` |
 | Launcher works with Go absent | PASS | `scripts/test-packaged-runtime.sh` on ARM64 |
 | No symlink, world-writable file, unexpected executable, or secret finding | PASS | Repository validator and release audit |
-| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `55e95e7` |
+| Official Go vulnerability analysis | PASS | `govulncheck` v1.7.0 reported no vulnerabilities for `37f16f6` |
 | Cross-process state safety and bounds | PASS | Race tests cover advisory locking, stale pairing rejection, unsafe lock/state files, 64 KiB config cap, and 4096-byte token cap |
-| Clean Git checkout validates and runs packaged backend | PENDING | Prior `55e95e7` clone used the incomplete tab-only QML harness; requires a corrected clean-clone rerun |
+| Clean Git checkout validates and runs packaged backend | PASS | Separate untrusted `--no-local` clone of `37f16f6`; race, vet, vulnerability, type, full-widget runtime, manifest, policy, checksum, and no-Go gates passed and left it clean |
 | Permanent marketplace identity and listing metadata | PASS | Namespaced ID, author, module path, real repository URL, allowed category/tags, and optional-preview policy are validator-backed |
-| Marketplace static security baseline | PASS | Current engine on exact `55e95e7`: zero findings, non-blocking `review-required`, expected bundled-binary capability only |
-| CI workflow executes remotely | PASS | GitHub Actions run `33003748420` passed on public `main` at `de6903b` |
+| Marketplace static security baseline | PENDING | Prior zero-finding baseline covered `55e95e7`; rerun required on the corrected candidate |
+| CI workflow executes remotely | PENDING | New required Arch/QML job and ordinary verification must pass after the corrected candidate is pushed |
 | Tagged release workflow executes remotely | PENDING | Requires an owner-approved release tag after the remaining live gates pass |
 
 ## Install and shell integration
 
 | Check | Status | Evidence |
 |---|---|---|
-| Git-backed install through `omarchy plugin add` | PASS | Exact `55e95e7` local `file://` install/update under the permanent ID |
+| Git-backed install through `omarchy plugin add` | PASS | Exact `37f16f6` local `file://` update under the permanent ID |
 | Enable in right bar section | PASS | Live shell layout and plugin catalog |
-| Panel opens without Frame-specific QML/runtime error | PENDING | Installed `55e95e7` is rejected by Quickshell; requires corrected exact-candidate live reload and journal inspection |
+| Panel opens without Frame-specific QML/runtime error | PASS | Exact `37f16f6` visible icon plus non-activating IPC open/close and zero Frame errors in the restarted shell journal |
 | Remove keeps unmanaged copy recoverable | PASS | Omarchy created a timestamped backup during migration |
 | Beta-ID migration preserves owner-only TV state | PASS | State file remained byte-identical and existing authorization returned sanitized online/Art status |
 | Keyboard-only traversal, visible focus, and dismissal | PASS | Live native key-catcher focus/dismissal acceptance plus exact-candidate windowless execution of selected-tab landing, bounded movement, and activation |
