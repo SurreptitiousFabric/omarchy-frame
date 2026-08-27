@@ -19,7 +19,7 @@ Submission requirements last reviewed 2026-08-26 against
 
 The marketplace's current marker-protocol v4 / baseline-policy 3 engine was run
 locally against public candidate
-`1f1ef4878d8b49807d318462a79d1bdf09271a7c`. It found one valid root plugin and
+`9a6d56149457e9fda18a03ef85b55c488a09eb54`. It found one valid root plugin and
 returned `review-required` with no findings and no approval block. Its only
 capability was `bundled-executable-binary`, which is intentional: static ARM64
 and AMD64 backends let users install the plugin without Go. Marketplace
