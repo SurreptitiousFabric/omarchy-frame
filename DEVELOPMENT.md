@@ -31,6 +31,7 @@ scripts/test-qml-policy.sh
 scripts/test-qml-render.sh
 scripts/test-qml-types.sh
 scripts/test-qml-runtime.sh
+scripts/test-qml-runtime-policy.sh
 scripts/test-repository-policy.sh
 scripts/test-release-readiness.sh
 scripts/test-ui-contract.sh
@@ -57,10 +58,14 @@ The QML type script maps Omarchy's `qs.Commons` and `qs.Ui` directories into a
 standard Qt import tree and rejects unknown local-component properties or
 missing required properties. GitHub Actions runs it in an Arch container with
 official Quickshell and Omarchy QML APIs pinned to commit
-`dec29fa90afc3d16a7e0c487c1869c7e512282ca`. Repository-policy mutations prove
-both type-contract failures are rejected by the companion QML policy script.
-The same Arch job requires Quickshell runtime loading and QtTest pixel rendering
-instead of permitting either test to skip. `scripts/test-qml-ci.sh` starts a
+`dec29fa90afc3d16a7e0c487c1869c7e512282ca`. The QML policy scripts prove that
+missing required properties, fixed geometry, and hard-coded font inheritance
+are rejected; they first validate the unchanged tree so a missing validator
+cannot masquerade as successful mutation rejection. The same Arch job requires
+qmllint, Quickshell runtime loading, and QtTest pixel rendering instead of
+permitting any category to skip. Generic repository structure mutations stay
+in the Ubuntu verify job and never invoke an optional QML runtime.
+`scripts/test-qml-ci.sh` starts a
 one-output, pixman-rendered headless Sway compositor so `PanelWindow` loads
 through the real layer-shell protocol rather than an offscreen Qt substitute.
 The ephemeral Arch container removes Sway's optional `cap_sys_nice` file

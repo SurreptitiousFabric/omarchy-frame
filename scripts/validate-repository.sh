@@ -71,10 +71,6 @@ mapfile -t repository_scripts < <(find scripts -maxdepth 1 -type f -name '*.sh' 
 bash -n "${repository_scripts[@]}"
 
 scripts/test-ui-contract.sh
-scripts/test-qml-types.sh
-scripts/test-qml-policy.sh
-scripts/test-qml-runtime.sh
-scripts/test-qml-render.sh
 scripts/test-release-package.sh
 scripts/test-release-readiness.sh
 

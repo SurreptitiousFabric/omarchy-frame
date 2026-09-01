@@ -51,6 +51,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 - Decode Art response identity and transfer endpoints through shared typed
   validation, and replace exact-source QML assertions with runtime behavior
   checks that tolerate equivalent refactors.
+- Keep generic repository policy independent of QML runtime availability;
+  QML mutation suites now run only in the equipped QML job and fail closed
+  when a required validator is unavailable.
 - Make tagged releases fail closed on acceptance, candidate ancestry,
   version/changelog coherence, clean-tree state, and reproducible tracked
   artifacts; checksum and publish the portable launcher with both static

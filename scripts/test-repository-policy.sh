@@ -55,12 +55,4 @@ sed -i -E '0,/actions\/checkout@[0-9a-f]{40}/s//actions\/checkout@v7/' \
   "$target/.github/workflows/ci.yml"
 expect_rejected "mutable workflow action" "$target"
 
-target=$(new_case hardcoded-ui-font)
-sed -i 's/bar ? bar.fontFamily : Style.font.family/"sans-serif"/' "$target/BarWidget.qml"
-expect_rejected "hard-coded UI font" "$target"
-
-target=$(new_case fixed-ui-geometry)
-sed -i 's/width: Style.space(222)/width: 222/' "$target/components/RemotePage.qml"
-expect_rejected "fixed UI geometry" "$target"
-
 echo "Repository policy rejects unsafe release shapes"
