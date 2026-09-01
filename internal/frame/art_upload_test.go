@@ -130,7 +130,7 @@ func TestUploadArtEndToEndOverInMemoryConnections(t *testing.T) {
 			done <- fmt.Errorf("invalid transfer header=%#v body=%x", header, body)
 			return
 		}
-		added, _ := json.Marshal(map[string]any{"event": "image_added", "content_id": "MY-UPLOAD-1"})
+		added, _ := json.Marshal(map[string]any{"event": "image_added", "request_id": requestID, "content_id": "MY-UPLOAD-1"})
 		addedEnvelope, _ := json.Marshal(map[string]any{"data": string(added)})
 		_, err := artServer.Write(serverFrame(1, addedEnvelope))
 		done <- err
@@ -192,19 +192,39 @@ func TestWaitArtEventCorrelatesAndParses(t *testing.T) {
 	}
 }
 
-func TestWaitArtEventAllowsUncorrelatedFirmwareCompletion(t *testing.T) {
+func TestWaitArtEventIgnoresIDLessCompletionBeforeMatchingCompletion(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()
 	defer server.Close()
 	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
 	go func() {
-		inner, _ := json.Marshal(map[string]any{"event": "image_added", "content_id": "MY-UPLOAD-1"})
-		outer, _ := json.Marshal(map[string]any{"data": string(inner)})
-		_, _ = server.Write(serverFrame(1, outer))
+		for _, response := range []map[string]any{
+			{"event": "image_added", "content_id": "UNRELATED-UPLOAD"},
+			{"event": "image_added", "request_id": "wanted", "content_id": "MY-UPLOAD-1"},
+		} {
+			inner, _ := json.Marshal(response)
+			outer, _ := json.Marshal(map[string]any{"data": string(inner)})
+			_, _ = server.Write(serverFrame(1, outer))
+		}
 	}()
 	got, err := waitArtEvent(w, "wanted", "image_added", time.Second)
 	if err != nil || got.contentID != "MY-UPLOAD-1" {
 		t.Fatalf("got=%v err=%v", got, err)
+	}
+}
+
+func TestWaitArtEventFailsClosedOnOnlyIDLessCompletion(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	go func() {
+		inner, _ := json.Marshal(map[string]any{"event": "image_added", "content_id": "UNATTRIBUTED-UPLOAD"})
+		outer, _ := json.Marshal(map[string]any{"data": string(inner)})
+		_, _ = server.Write(serverFrame(1, outer))
+	}()
+	if _, err := waitArtEvent(w, "wanted", "image_added", 20*time.Millisecond); err == nil {
+		t.Fatal("accepted ID-less completion for a correlated upload")
 	}
 }
 

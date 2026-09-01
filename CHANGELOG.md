@@ -26,7 +26,8 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 - Reject malformed or unrelated TV pairing events instead of treating them as
   successful authorization handshakes.
 - Correlate upload completion/error events with the active Art request and
-  reject truncated or internally inconsistent thumbnail batches.
+  reject ID-less completion broadcasts that cannot be attributed safely to the
+  active upload; reject truncated or internally inconsistent thumbnail batches.
 - Restore the complete bar widget after page-property wiring drift prevented
   Quickshell from loading it; add full-entry-point creation, native QML type
   contracts, fail-closed mutations, and required Arch/Omarchy CI coverage.

@@ -241,7 +241,11 @@ func waitArtEvent(w *wsConn, requestID, event string, timeout time.Duration) (ar
 			continue
 		}
 		got := response.correlationID()
-		correlated := requestID == "" || got == "" || got == requestID
+		// Some firmware broadcasts image_added without an ID, but the observed
+		// payload contains only an opaque content_id. It does not echo the
+		// transfer connection ID, key, or file metadata, so it cannot be tied
+		// safely to this upload when another Art client may be active.
+		correlated := requestID == "" || got == requestID
 		if response.event == "error" && correlated {
 			return artResponse{}, fmt.Errorf("Art request failed: %v", response.errorCode)
 		}
