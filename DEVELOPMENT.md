@@ -10,7 +10,8 @@ discovery fallback.
 `BarWidget.qml` composes the panel. Focused tab and card/icon implementations
 live under `components/`; `Service.qml` is the only UI/backend boundary. The UI
 inherits `bar.fontFamily`, uses `Style.space()` for fixed geometry, and composes
-controls from `qs.Ui`; `scripts/test-ui-contract.sh` enforces those Omarchy
+controls from `qs.Ui`; runtime QML tests exercise grouped-tab behavior and font
+inheritance, while `scripts/test-ui-contract.sh` enforces the remaining Omarchy
 design-system boundaries.
 
 ## Build and test

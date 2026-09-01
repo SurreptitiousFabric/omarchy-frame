@@ -43,11 +43,24 @@ func TestReceiveThumbnails(t *testing.T) {
 	}
 }
 
-func TestReceiveThumbnailsAllowsCleanPartialBatch(t *testing.T) {
+func TestReceiveThumbnailsRejectsTruncatedBatch(t *testing.T) {
 	b := thumbnailFrame(t, "A", []byte{0xff, 0xd8, 0xff, 1}, 0, 2)
-	got, err := receiveThumbnails(bytes.NewReader(b), t.TempDir(), map[string]bool{"A": true, "B": true})
-	if err != nil || len(got) != 1 {
-		t.Fatalf("got=%v err=%v", got, err)
+	if _, err := receiveThumbnails(bytes.NewReader(b), t.TempDir(), map[string]bool{"A": true, "B": true}); err == nil || !strings.Contains(err.Error(), "1 of 2") {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestReceiveThumbnailsRejectsInconsistentBatchMetadata(t *testing.T) {
+	tests := map[string][]byte{
+		"out of order":  append(thumbnailFrame(t, "A", []byte{0xff, 0xd8, 0xff, 1}, 0, 2), thumbnailFrame(t, "B", []byte{0xff, 0xd8, 0xff, 2}, 0, 2)...),
+		"changed total": append(thumbnailFrame(t, "A", []byte{0xff, 0xd8, 0xff, 1}, 0, 2), thumbnailFrame(t, "B", []byte{0xff, 0xd8, 0xff, 2}, 1, 1)...),
+	}
+	for name, stream := range tests {
+		t.Run(name, func(t *testing.T) {
+			if _, err := receiveThumbnails(bytes.NewReader(stream), t.TempDir(), map[string]bool{"A": true, "B": true}); err == nil || !strings.Contains(err.Error(), "unsafe thumbnail metadata") {
+				t.Fatalf("got %v", err)
+			}
+		})
 	}
 }
 
@@ -211,6 +224,17 @@ func TestReceiveThumbnailsRejectsUnsafeMetadata(t *testing.T) {
 	if _, err := receiveThumbnails(&b, t.TempDir(), map[string]bool{"A": true}); err == nil {
 		t.Fatal("accepted oversized header")
 	}
+	metadata, err := json.Marshal(map[string]any{"fileLength": 4.5, "fileID": "A", "fileType": "jpg", "num": 0, "total": 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Reset()
+	_ = binary.Write(&b, binary.BigEndian, uint32(len(metadata)))
+	b.Write(metadata)
+	b.Write([]byte{0xff, 0xd8, 0xff, 1})
+	if _, err := receiveThumbnails(&b, t.TempDir(), map[string]bool{"A": true}); err == nil {
+		t.Fatal("accepted fractional thumbnail length")
+	}
 }
 
 func TestReceiveThumbnailsRejectsOversizedBatch(t *testing.T) {
@@ -288,11 +312,15 @@ func TestFetchArtThumbnailsFromLocalTransferEndpoint(t *testing.T) {
 	}
 }
 
-func TestPortNumber(t *testing.T) {
-	if portNumber(float64(1234)) != 1234 || portNumber("4321") != 4321 || portNumber("bad") != 0 {
-		t.Fatal("port parsing failed")
+func TestIntegerValue(t *testing.T) {
+	for _, value := range []any{float64(1234), "4321"} {
+		if _, ok := integerValue(value); !ok {
+			t.Fatalf("integer parsing failed for %#v", value)
+		}
 	}
-	if !boolValue(true) || !boolValue("true") || boolValue("false") {
-		t.Fatal("boolean parsing failed")
+	for _, value := range []any{"bad", -1.0, 1.5, true} {
+		if _, ok := integerValue(value); ok {
+			t.Fatalf("accepted invalid integer %#v", value)
+		}
 	}
 }

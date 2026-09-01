@@ -23,6 +23,10 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 ### Fixed
 
+- Reject malformed or unrelated TV pairing events instead of treating them as
+  successful authorization handshakes.
+- Correlate upload completion/error events with the active Art request and
+  reject truncated or internally inconsistent thumbnail batches.
 - Restore the complete bar widget after page-property wiring drift prevented
   Quickshell from loading it; add full-entry-point creation, native QML type
   contracts, fail-closed mutations, and required Arch/Omarchy CI coverage.
@@ -44,6 +48,9 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
 
 ### Changed
 
+- Decode Art response identity and transfer endpoints through shared typed
+  validation, and replace exact-source QML assertions with runtime behavior
+  checks that tolerate equivalent refactors.
 - Make tagged releases fail closed on acceptance, candidate ancestry,
   version/changelog coherence, clean-tree state, and reproducible tracked
   artifacts; checksum and publish the portable launcher with both static

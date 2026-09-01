@@ -136,7 +136,12 @@ func TestUploadArtEndToEndOverInMemoryConnections(t *testing.T) {
 		done <- err
 	}()
 	connectArt := func(*Config, string) (*wsConn, error) { return w, nil }
-	dialEndpoint := func(*Config, map[string]any, time.Duration) (net.Conn, error) { return uploadClient, nil }
+	dialEndpoint := func(_ *Config, endpoint transferEndpoint, _ time.Duration) (net.Conn, error) {
+		if endpoint.Key != "transfer-key" {
+			t.Fatalf("unexpected endpoint %#v", endpoint)
+		}
+		return uploadClient, nil
+	}
 	selected := ""
 	selectImage := func(_ *Config, id string) (map[string]any, error) {
 		selected = id
@@ -172,6 +177,7 @@ func TestWaitArtEventCorrelatesAndParses(t *testing.T) {
 	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
 	go func() {
 		for _, response := range []map[string]any{
+			{"event": "error", "request_id": "other", "error_code": "not_ours"},
 			{"event": "ready_to_use", "request_id": "other"},
 			{"event": "ready_to_use", "request_id": "wanted", "conn_info": map[string]any{"port": 1234}},
 		} {
@@ -181,8 +187,44 @@ func TestWaitArtEventCorrelatesAndParses(t *testing.T) {
 		}
 	}()
 	got, err := waitArtEvent(w, "wanted", "ready_to_use", time.Second)
-	if err != nil || got["request_id"] != "wanted" {
+	if err != nil || got.requestID != "wanted" {
 		t.Fatalf("got=%v err=%v", got, err)
+	}
+}
+
+func TestWaitArtEventAllowsUncorrelatedFirmwareCompletion(t *testing.T) {
+	client, server := net.Pipe()
+	defer client.Close()
+	defer server.Close()
+	w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+	go func() {
+		inner, _ := json.Marshal(map[string]any{"event": "image_added", "content_id": "MY-UPLOAD-1"})
+		outer, _ := json.Marshal(map[string]any{"data": string(inner)})
+		_, _ = server.Write(serverFrame(1, outer))
+	}()
+	got, err := waitArtEvent(w, "wanted", "image_added", time.Second)
+	if err != nil || got.contentID != "MY-UPLOAD-1" {
+		t.Fatalf("got=%v err=%v", got, err)
+	}
+}
+
+func TestDecodeArtResponseAcceptsObjectDataAndRejectsMalformedFields(t *testing.T) {
+	message, err := json.Marshal(map[string]any{"data": map[string]any{"event": "image_added", "request_id": "wanted", "content_id": "MY-UPLOAD-1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, present, err := decodeArtResponse(message)
+	if err != nil || !present || got.requestID != "wanted" || got.contentID != "MY-UPLOAD-1" {
+		t.Fatalf("got=%#v present=%v err=%v", got, present, err)
+	}
+	for _, malformed := range [][]byte{
+		[]byte(`{`),
+		[]byte(`{"data":"{"}`),
+		[]byte(`{"data":{"request_id":12}}`),
+	} {
+		if _, _, err := decodeArtResponse(malformed); err == nil {
+			t.Fatalf("accepted malformed response %s", malformed)
+		}
 	}
 }
 
@@ -207,11 +249,11 @@ func TestConnectionInfoAcceptsObjectOrJSONString(t *testing.T) {
 		{"conn_info": `{"ip":"192.168.1.8","port":1234}`},
 	} {
 		got, err := connectionInfo(input)
-		if err != nil || got["ip"] != "192.168.1.8" {
+		if err != nil || got.IP != "192.168.1.8" || got.Port != 1234 {
 			t.Fatalf("got=%v err=%v", got, err)
 		}
 	}
-	for _, input := range []map[string]any{{}, {"conn_info": "{"}} {
+	for _, input := range []map[string]any{{}, {"conn_info": "{"}, {"conn_info": map[string]any{"port": true}}, {"conn_info": map[string]any{"secured": 1}}} {
 		if _, err := connectionInfo(input); err == nil {
 			t.Fatalf("accepted %#v", input)
 		}
@@ -220,11 +262,11 @@ func TestConnectionInfoAcceptsObjectOrJSONString(t *testing.T) {
 
 func TestDialTVEndpointRejectsUnsafeAddresses(t *testing.T) {
 	c := &Config{IP: "192.168.1.8"}
-	for _, endpoint := range []map[string]any{
-		{"ip": "192.168.1.9", "port": float64(1234)},
-		{"ip": "8.8.8.8", "port": float64(1234)},
-		{"ip": "192.168.1.8", "port": float64(0)},
-		{"ip": "not-an-ip", "port": float64(1234)},
+	for _, endpoint := range []transferEndpoint{
+		{IP: "192.168.1.9", Port: 1234},
+		{IP: "8.8.8.8", Port: 1234},
+		{IP: "192.168.1.8", Port: 0},
+		{IP: "not-an-ip", Port: 1234},
 	} {
 		if conn, err := dialTVEndpoint(c, endpoint, time.Millisecond); err == nil {
 			_ = conn.Close()

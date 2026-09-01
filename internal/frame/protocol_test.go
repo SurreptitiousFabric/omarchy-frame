@@ -358,6 +358,36 @@ func TestCompletePairingRejectsUnauthorized(t *testing.T) {
 	}
 }
 
+func TestCompletePairingValidatesResponse(t *testing.T) {
+	tests := []struct {
+		name    string
+		message string
+		wantErr string
+	}{
+		{name: "malformed JSON", message: `{`, wantErr: "invalid pairing response"},
+		{name: "unrelated event", message: `{"event":"ms.channel.clientConnect"}`, wantErr: "unexpected pairing response"},
+		{name: "missing event", message: `{}`, wantErr: "unexpected pairing response"},
+		{name: "malformed data", message: `{"event":"ms.channel.connect","data":"connected"}`, wantErr: "invalid pairing response"},
+		{name: "tokenless reconnect", message: `{"event":"ms.channel.connect"}`},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			client, server := net.Pipe()
+			defer client.Close()
+			defer server.Close()
+			w := &wsConn{Conn: client, r: bufio.NewReader(client)}
+			go func() { _, _ = server.Write(serverFrame(1, []byte(test.message))) }()
+			err := completePairing(&Config{Token: "existing-token"}, w, time.Second)
+			if test.wantErr == "" && err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if test.wantErr != "" && (err == nil || !strings.Contains(err.Error(), test.wantErr)) {
+				t.Fatalf("got %v, want error containing %q", err, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestRemotePayloadIsJSON(t *testing.T) {
 	client, server := net.Pipe()
 	defer client.Close()

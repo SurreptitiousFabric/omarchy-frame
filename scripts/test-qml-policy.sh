@@ -39,10 +39,6 @@ expect_rejected() {
   fi
 }
 
-target=$(new_case unknown-page-property)
-sed -i '/id: setupPage/a\                        softFill: root.softFill' "$target/BarWidget.qml"
-expect_rejected "unknown page property" "$target"
-
 target=$(new_case missing-required-page-property)
 sed -i '/^[[:space:]]*ArtPage {/,/^[[:space:]]*}/ { /softFill: root.softFill/d; }' "$target/BarWidget.qml"
 expect_rejected "missing required page property" "$target"

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -38,6 +39,22 @@ type artRequestFunc func(*Config, string, []string) (map[string]any, error)
 type artCommandFunc func(*Config, map[string]any) (map[string]any, error)
 type thumbnailFetchFunc func(*Config, []string) (map[string]string, error)
 
+func artPayload(result map[string]any) (map[string]any, error) {
+	art, ok := result["art"].(map[string]any)
+	if !ok || art == nil {
+		return nil, errors.New("TV returned no Art response payload")
+	}
+	return art, nil
+}
+
+func artStringField(art map[string]any, name string) (string, error) {
+	value, ok := art[name].(string)
+	if !ok {
+		return "", fmt.Errorf("TV returned an invalid Art %s", name)
+	}
+	return value, nil
+}
+
 func artGallery(c *Config) (map[string]any, error) {
 	return artGalleryWith(c, artRequest, fetchArtThumbnails)
 }
@@ -51,8 +68,16 @@ func artGalleryWith(c *Config, request artRequestFunc, thumbnails thumbnailFetch
 			lastErr = err
 			continue
 		}
-		art, _ := listed["art"].(map[string]any)
-		raw, _ := art["content_list"].(string)
+		art, err := artPayload(listed)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		raw, err := artStringField(art, "content_list")
+		if err != nil {
+			lastErr = err
+			continue
+		}
 		var categoryItems []artItem
 		if err := json.Unmarshal([]byte(raw), &categoryItems); err != nil {
 			lastErr = errors.New("TV returned an invalid artwork list")
@@ -69,8 +94,10 @@ func artGalleryWith(c *Config, request artRequestFunc, thumbnails thumbnailFetch
 	items = uniqueArtItems(items)
 	currentID := ""
 	if current, e := request(c, "get_current_artwork", nil); e == nil {
-		if x, ok := current["art"].(map[string]any); ok {
-			currentID, _ = x["content_id"].(string)
+		if x, payloadErr := artPayload(current); payloadErr == nil {
+			if id, idErr := artStringField(x, "content_id"); idErr == nil && safeArtID.MatchString(id) {
+				currentID = id
+			}
 		}
 	}
 	ids := make([]string, 0, len(items))
@@ -125,8 +152,14 @@ func deleteArtWith(c *Config, id string, request artRequestFunc, command artComm
 	if err != nil {
 		return nil, err
 	}
-	art, _ := listed["art"].(map[string]any)
-	raw, _ := art["content_list"].(string)
+	art, err := artPayload(listed)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := artStringField(art, "content_list")
+	if err != nil {
+		return nil, err
+	}
 	var items []artItem
 	if json.Unmarshal([]byte(raw), &items) != nil || !containsArtID(items, id) {
 		return nil, errors.New("only photos in My Photos can be deleted")
@@ -197,29 +230,17 @@ func waitMatchingArtResponse(w *wsConn, requestID string, attempts int, timeout 
 }
 
 func matchingArtResponse(message []byte, requestID string) (map[string]any, bool, error) {
-	var envelope map[string]any
-	if json.Unmarshal(message, &envelope) != nil {
+	response, present, err := decodeArtResponse(message)
+	if err != nil || !present {
+		return nil, false, err
+	}
+	if response.correlationID() != requestID {
 		return nil, false, nil
 	}
-	raw, ok := envelope["data"].(string)
-	if !ok {
-		return nil, false, nil
+	if response.event == "error" {
+		return nil, true, fmt.Errorf("Art request failed: %v", response.errorCode)
 	}
-	var response map[string]any
-	if json.Unmarshal([]byte(raw), &response) != nil {
-		return nil, false, nil
-	}
-	got, _ := response["request_id"].(string)
-	if got == "" {
-		got, _ = response["id"].(string)
-	}
-	if got != requestID {
-		return nil, false, nil
-	}
-	if response["event"] == "error" {
-		return nil, true, fmt.Errorf("Art request failed: %v", response["error_code"])
-	}
-	return response, true, nil
+	return response.fields, true, nil
 }
 
 func fetchArtThumbnails(c *Config, ids []string) (map[string]string, error) {
@@ -243,12 +264,15 @@ func fetchArtThumbnailsWith(c *Config, ids []string, command artCommandFunc) (ma
 	if err != nil {
 		return nil, err
 	}
-	art, _ := res["art"].(map[string]any)
+	art, err := artPayload(res)
+	if err != nil {
+		return nil, err
+	}
 	ci, err := connectionInfo(art)
 	if err != nil {
 		return nil, err
 	}
-	secured := boolValue(ci["secured"])
+	secured := ci.Secured
 	conn, err := dialTVEndpoint(c, ci, 5*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnail connection (TLS=%t): %w", secured, err)
@@ -278,27 +302,19 @@ func fetchArtThumbnailsWith(c *Config, ids []string, command artCommandFunc) (ma
 	return images, nil
 }
 
-func portNumber(v any) int {
+func integerValue(v any) (int, bool) {
 	switch n := v.(type) {
 	case float64:
-		return int(n)
+		if n != math.Trunc(n) || n < 0 || n > float64(int(^uint(0)>>1)) {
+			return 0, false
+		}
+		return int(n), true
 	case string:
-		i, _ := strconv.Atoi(n)
-		return i
+		i, err := strconv.Atoi(n)
+		return i, err == nil && i >= 0
 	default:
-		return 0
+		return 0, false
 	}
-}
-
-func boolValue(v any) bool {
-	if b, ok := v.(bool); ok {
-		return b
-	}
-	if s, ok := v.(string); ok {
-		b, _ := strconv.ParseBool(s)
-		return b
-	}
-	return false
 }
 
 func receiveThumbnails(r io.Reader, dir string, expected map[string]bool) (map[string]string, error) {
@@ -312,10 +328,7 @@ func receiveThumbnailsWithLimit(r io.Reader, dir string, expected map[string]boo
 	for i := 0; i < total; i++ {
 		var hl uint32
 		if err := binary.Read(r, binary.BigEndian, &hl); err != nil {
-			if errors.Is(err, io.EOF) && len(out) > 0 {
-				return out, nil
-			}
-			return nil, err
+			return nil, fmt.Errorf("thumbnail batch ended after %d of %d images: %w", i, total, err)
 		}
 		if hl == 0 || hl > 64<<10 {
 			return nil, errors.New("invalid thumbnail header")
@@ -328,18 +341,21 @@ func receiveThumbnailsWithLimit(r io.Reader, dir string, expected map[string]boo
 		if json.Unmarshal(hb, &h) != nil {
 			return nil, errors.New("invalid thumbnail metadata")
 		}
-		fileID, _ := h["fileID"].(string)
-		fileType, _ := h["fileType"].(string)
-		fileLength := portNumber(h["fileLength"])
-		fileTotal := portNumber(h["total"])
-		if !expected[fileID] || fileLength < 1 || fileLength > 8<<20 || fileTotal < 1 || fileTotal > 100 {
+		fileID, idOK := h["fileID"].(string)
+		fileType, typeOK := h["fileType"].(string)
+		fileLength, lengthOK := integerValue(h["fileLength"])
+		fileNumber, numberOK := integerValue(h["num"])
+		fileTotal, totalOK := integerValue(h["total"])
+		if !idOK || !typeOK || !lengthOK || !numberOK || !totalOK || !expected[fileID] || fileLength < 1 || fileLength > 8<<20 || fileNumber != i || fileTotal < 1 || fileTotal > 100 || (i > 0 && fileTotal != total) {
 			return nil, errors.New("unsafe thumbnail metadata")
 		}
 		batchBytes += int64(fileLength)
 		if batchBytes > maxBatchBytes {
 			return nil, errors.New("thumbnail batch too large")
 		}
-		total = fileTotal
+		if i == 0 {
+			total = fileTotal
+		}
 		b := make([]byte, fileLength)
 		if _, err := io.ReadFull(r, b); err != nil {
 			return nil, fmt.Errorf("thumbnail body: %w", err)
@@ -357,6 +373,8 @@ func receiveThumbnailsWithLimit(r io.Reader, dir string, expected map[string]boo
 		}
 		out[fileID] = p
 	}
+	// Valid images written before a later stream failure remain usable cache
+	// entries, but callers receive no partial result for an incomplete batch.
 	return out, nil
 }
 

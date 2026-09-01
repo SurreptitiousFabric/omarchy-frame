@@ -134,18 +134,23 @@ func completePairing(c *Config, w *wsConn, handshakeTimeout time.Duration) error
 	if e != nil {
 		return fmt.Errorf("approve Omarchy Frame on the TV: %w", e)
 	}
-	var event struct {
+	var response struct {
 		Event string `json:"event"`
 		Data  struct {
 			Token string `json:"token"`
 		} `json:"data"`
 	}
-	_ = json.Unmarshal(msg, &event)
-	if event.Event == "ms.channel.unauthorized" {
+	if e = json.Unmarshal(msg, &response); e != nil {
+		return errors.New("TV returned an invalid pairing response")
+	}
+	if response.Event == "ms.channel.unauthorized" {
 		return errors.New("TV denied pairing; remove the old authorization in TV settings and retry")
 	}
-	if event.Data.Token != "" && event.Data.Token != c.Token {
-		if e = persistPairingToken(c, event.Data.Token); e != nil {
+	if response.Event != "ms.channel.connect" {
+		return errors.New("TV returned an unexpected pairing response")
+	}
+	if response.Data.Token != "" && response.Data.Token != c.Token {
+		if e = persistPairingToken(c, response.Data.Token); e != nil {
 			return e
 		}
 	}
