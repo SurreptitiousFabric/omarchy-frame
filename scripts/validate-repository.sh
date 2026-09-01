@@ -75,7 +75,9 @@ done < <(awk '
 ' .github/workflows/*.yml)
 
 sh -n bin/frame-controller
-bash -n "${repository_scripts[@]}"
+for script in "${repository_scripts[@]}"; do
+  bash -n "$script"
+done
 
 scripts/test-ui-contract.sh
 scripts/test-release-package.sh

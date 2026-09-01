@@ -42,7 +42,7 @@ scripts/test-installed-shell.sh --expect-commit "$(git rev-parse HEAD)"
 Repository shell tools are direct children of `scripts/`; nested executable
 scripts are not supported. The repository validator derives that exact
 top-level inventory once and uses it for both executable authorization and
-`bash -n` syntax validation.
+per-file `bash -n` syntax validation.
 
 The QML runtime script exercises keyboard behavior in the real tab component
 and performs a `BarWidget.qml` component-load smoke test. Its inert bar and

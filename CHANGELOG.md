@@ -56,7 +56,8 @@ Semantic Versioning once the first public `v1.0.0` release is tagged.
   QML mutation suites now run only in the equipped QML job and fail closed
   when a required validator is unavailable.
 - Derive executable-script authorization and syntax checks from the same
-  top-level `scripts/` inventory, rejecting nested executable scripts.
+  top-level `scripts/` inventory, validate every script separately, and reject
+  nested executable scripts.
 - Make tagged releases fail closed on acceptance, candidate ancestry,
   version/changelog coherence, clean-tree state, and reproducible tracked
   artifacts; checksum and publish the portable launcher with both static
