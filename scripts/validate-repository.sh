@@ -29,15 +29,27 @@ if find . -path ./.git -prune -o -type f -perm -0002 -print -quit | grep -q .; t
   exit 1
 fi
 
-while IFS= read -r executable; do
-  case $executable in
-    ./bin/frame-controller|./bin/frame-controller-linux-amd64|./bin/frame-controller-linux-arm64|./scripts/build-release.sh|./scripts/check-release-readiness.sh|./scripts/package-release.sh|./scripts/test-installed-shell.sh|./scripts/test-packaged-runtime.sh|./scripts/test-qml-ci.sh|./scripts/test-qml-policy.sh|./scripts/test-qml-render.sh|./scripts/test-qml-runtime.sh|./scripts/test-qml-types.sh|./scripts/test-release-package.sh|./scripts/test-release-readiness.sh|./scripts/test-repository-policy.sh|./scripts/test-ui-contract.sh|./scripts/validate-repository.sh) ;;
-    *)
-      echo "validate-repository: unexpected executable $executable" >&2
-      exit 1
-      ;;
-  esac
-done < <(find . -path ./.git -prune -o -type f -perm /0111 -print | sort)
+mapfile -d '' -t repository_scripts < <(find scripts -mindepth 1 -maxdepth 1 -type f -name '*.sh' -print0)
+(( ${#repository_scripts[@]} > 0 )) || {
+  echo "validate-repository: no validation scripts found" >&2
+  exit 1
+}
+
+declare -A allowed_executables=(
+  [./bin/frame-controller]=1
+  [./bin/frame-controller-linux-amd64]=1
+  [./bin/frame-controller-linux-arm64]=1
+)
+for script in "${repository_scripts[@]}"; do
+  allowed_executables["./$script"]=1
+done
+
+while IFS= read -r -d '' executable; do
+  if [[ -z ${allowed_executables[$executable]+allowed} ]]; then
+    echo "validate-repository: unexpected executable $executable" >&2
+    exit 1
+  fi
+done < <(find . -path ./.git -prune -o -type f -perm /0111 -print0)
 
 if grep -R -n -E 'github\.com/(OWNER|YOUR[-_A-Z]*|your[_-]?github)|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' \
   README.md SECURITY.md MARKETPLACE.md 2>/dev/null; then
@@ -63,13 +75,11 @@ done < <(awk '
 ' .github/workflows/*.yml)
 
 sh -n bin/frame-controller
-bash -n scripts/build-release.sh scripts/check-release-readiness.sh scripts/package-release.sh scripts/test-installed-shell.sh scripts/test-packaged-runtime.sh scripts/test-qml-ci.sh scripts/test-qml-policy.sh scripts/test-qml-render.sh scripts/test-qml-runtime.sh scripts/test-qml-types.sh scripts/test-release-package.sh scripts/test-release-readiness.sh scripts/test-repository-policy.sh scripts/test-ui-contract.sh scripts/validate-repository.sh
+for script in "${repository_scripts[@]}"; do
+  bash -n "$script"
+done
 
 scripts/test-ui-contract.sh
-scripts/test-qml-types.sh
-scripts/test-qml-policy.sh
-scripts/test-qml-runtime.sh
-scripts/test-qml-render.sh
 scripts/test-release-package.sh
 scripts/test-release-readiness.sh
 

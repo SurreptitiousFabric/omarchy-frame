@@ -78,6 +78,7 @@ stand's physical orientation. Keep cables and objects clear before rotating.
 | Art request fails | Firmware changed/disabled Art socket | Ordinary remote control remains available |
 | Status says ON | TV is online but Samsung did not reliably distinguish TV from Art Mode | Remote controls remain usable; hover the status for detail; LS03B firmware can report `off` while displaying art |
 | Upload fails | Unsupported image, TV storage full, or Art service declined transfer | Try a JPEG/PNG under 20 MB; ensure Art Mode has completed its first-use setup |
+| Upload reaches the TV but the command reports failure | Firmware omitted the request ID from its upload-completion event, so the controller could not safely distinguish it from another client upload | Refresh My Photos and select the uploaded image manually |
 | Uploaded photo is missing | Gallery still reflects the previous TV list | Wait for the automatic refresh or press Refresh gallery |
 | Rotate says sent but does not move | Stand not paired | Follow the physical-remote pairing steps above |
 | “Not available” during pairing | Network remote chord rejected | A compatible physical Smart Remote is required |

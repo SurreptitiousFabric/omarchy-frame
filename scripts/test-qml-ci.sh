@@ -72,6 +72,13 @@ if ! XDG_RUNTIME_DIR=$runtime \
   exit 1
 fi
 
+XDG_RUNTIME_DIR=$runtime \
+WAYLAND_DISPLAY=$wayland_socket \
+QT_QPA_PLATFORM=wayland \
+QT_QUICK_BACKEND=software \
+FRAME_REQUIRE_QUICKSHELL=1 \
+  scripts/test-qml-runtime-policy.sh
+
 FRAME_REQUIRE_QML_RENDER=1 scripts/test-qml-render.sh
 
 echo "QML contracts, layer-shell runtime loading, and icon pixels passed in CI"

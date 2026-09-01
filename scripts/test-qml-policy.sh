@@ -3,14 +3,10 @@ set -euo pipefail
 
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 
-if ! command -v qmllint >/dev/null 2>&1 && [[ ! -x /usr/lib/qt6/bin/qmllint ]] && [[ -z ${QMLLINT:-} ]]; then
-  if [[ ${FRAME_REQUIRE_QMLLINT:-0} == 1 ]]; then
-    echo "test-qml-policy: qmllint is required but unavailable" >&2
-    exit 1
-  fi
-  echo "QML negative contract tests skipped: qmllint is not installed"
-  exit 0
-fi
+# A negative mutation suite is meaningful only after the validator proves it
+# can accept the valid source tree. Missing validators must not make every
+# mutation look successfully rejected.
+FRAME_REQUIRE_QMLLINT=1 "$root/scripts/test-qml-types.sh" >/dev/null
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/omarchy-frame-qml-policy.XXXXXX")
 case $work in
@@ -33,18 +29,25 @@ new_case() {
 expect_rejected() {
   local name=$1
   local target=$2
-  if (cd "$target" && ./scripts/test-qml-types.sh >/dev/null 2>&1); then
+  shift 2
+  if (cd "$target" && "$@" >/dev/null 2>&1); then
     echo "test-qml-policy: accepted $name" >&2
     exit 1
   fi
 }
 
-target=$(new_case unknown-page-property)
-sed -i '/id: setupPage/a\                        softFill: root.softFill' "$target/BarWidget.qml"
-expect_rejected "unknown page property" "$target"
+if QMLLINT="$work/missing-qmllint" FRAME_REQUIRE_QMLLINT=1 \
+  "$root/scripts/test-qml-types.sh" >/dev/null 2>&1; then
+  echo "test-qml-policy: missing required qmllint was treated as success" >&2
+  exit 1
+fi
 
 target=$(new_case missing-required-page-property)
 sed -i '/^[[:space:]]*ArtPage {/,/^[[:space:]]*}/ { /softFill: root.softFill/d; }' "$target/BarWidget.qml"
-expect_rejected "missing required page property" "$target"
+expect_rejected "missing required page property" "$target" env FRAME_REQUIRE_QMLLINT=1 ./scripts/test-qml-types.sh
+
+target=$(new_case fixed-ui-geometry)
+sed -i 's/width: Style.space(222)/width: 222/' "$target/components/RemotePage.qml"
+expect_rejected "fixed UI geometry" "$target" ./scripts/test-ui-contract.sh
 
 echo "QML policy rejects invalid local component contracts"

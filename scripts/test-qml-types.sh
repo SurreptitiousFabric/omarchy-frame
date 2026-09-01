@@ -5,7 +5,13 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 cd "$root"
 
 qml_lint=${QMLLINT:-}
-if [[ -z $qml_lint ]]; then
+if [[ -n $qml_lint ]]; then
+  if [[ $qml_lint == */* ]]; then
+    [[ -x $qml_lint ]] || qml_lint=
+  else
+    qml_lint=$(command -v "$qml_lint" 2>/dev/null || true)
+  fi
+else
   if command -v qmllint >/dev/null 2>&1; then
     qml_lint=$(command -v qmllint)
   elif [[ -x /usr/lib/qt6/bin/qmllint ]]; then

@@ -20,8 +20,66 @@ import (
 
 const maxUploadSize = 20 << 20
 
-type endpointDialFunc func(*Config, map[string]any, time.Duration) (net.Conn, error)
+type transferEndpoint struct {
+	IP      string
+	Port    int
+	Secured bool
+	Key     string
+}
+
+type endpointDialFunc func(*Config, transferEndpoint, time.Duration) (net.Conn, error)
 type artSelectFunc func(*Config, string) (map[string]any, error)
+
+type artResponse struct {
+	fields    map[string]any
+	event     string
+	requestID string
+	id        string
+	contentID string
+	errorCode any
+}
+
+func (r artResponse) correlationID() string {
+	if r.requestID != "" {
+		return r.requestID
+	}
+	return r.id
+}
+
+func decodeArtResponse(message []byte) (artResponse, bool, error) {
+	var envelope struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(message, &envelope); err != nil {
+		return artResponse{}, false, errors.New("TV returned an invalid Art response envelope")
+	}
+	if len(envelope.Data) == 0 || string(envelope.Data) == "null" {
+		return artResponse{}, false, nil
+	}
+	payload := envelope.Data
+	if len(payload) > 0 && payload[0] == '"' {
+		var encoded string
+		if err := json.Unmarshal(payload, &encoded); err != nil {
+			return artResponse{}, false, errors.New("TV returned invalid encoded Art response data")
+		}
+		payload = []byte(encoded)
+	}
+	var fields map[string]any
+	var header struct {
+		Event     string `json:"event"`
+		RequestID string `json:"request_id"`
+		ID        string `json:"id"`
+		ContentID string `json:"content_id"`
+		ErrorCode any    `json:"error_code"`
+	}
+	if err := json.Unmarshal(payload, &fields); err != nil || fields == nil {
+		return artResponse{}, false, errors.New("TV returned invalid Art response data")
+	}
+	if err := json.Unmarshal(payload, &header); err != nil {
+		return artResponse{}, false, errors.New("TV returned invalid Art response fields")
+	}
+	return artResponse{fields: fields, event: header.Event, requestID: header.RequestID, id: header.ID, contentID: header.ContentID, errorCode: header.ErrorCode}, true, nil
+}
 
 func uploadArt(c *Config, input string) (map[string]any, error) {
 	return uploadArtWith(c, input, connect, dialTVEndpoint, selectArt)
@@ -63,19 +121,18 @@ func uploadArtWith(c *Config, input string, connectArt wsConnectFunc, dialEndpoi
 	if err != nil {
 		return nil, err
 	}
-	ci, err := connectionInfo(ready)
+	ci, err := connectionInfo(ready.fields)
 	if err != nil {
 		return nil, err
 	}
-	key, _ := ci["key"].(string)
-	if key == "" || len(key) > 4096 {
+	if ci.Key == "" || len(ci.Key) > 4096 {
 		return nil, errors.New("TV returned invalid upload authorization")
 	}
 	conn, err := dialEndpoint(c, ci, 10*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("image upload connection: %w", err)
 	}
-	header, _ := json.Marshal(map[string]any{"num": 0, "total": 1, "fileLength": size, "fileName": "upload", "fileType": kind, "secKey": key, "version": "0.0.1"})
+	header, _ := json.Marshal(map[string]any{"num": 0, "total": 1, "fileLength": size, "fileName": "upload", "fileType": kind, "secKey": ci.Key, "version": "0.0.1"})
 	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 	if err = binary.Write(conn, binary.BigEndian, uint32(len(header))); err == nil {
 		err = writeAll(conn, header)
@@ -87,11 +144,11 @@ func uploadArtWith(c *Config, input string, connectArt wsConnectFunc, dialEndpoi
 	if err != nil {
 		return nil, errors.New("image transfer did not complete")
 	}
-	added, err := waitArtEvent(w, "", "image_added", 20*time.Second)
+	added, err := waitArtEvent(w, id, "image_added", 20*time.Second)
 	if err != nil {
 		return nil, err
 	}
-	contentID, _ := added["content_id"].(string)
+	contentID := added.contentID
 	if !safeArtID.MatchString(contentID) {
 		return nil, errors.New("TV did not return a valid uploaded artwork id")
 	}
@@ -169,56 +226,126 @@ func setMyPhotosSlideshow(c *Config, minutes int, shuffle bool) (map[string]any,
 
 func formatSlideshowMinutes(minutes int) string { return strconv.Itoa(minutes) }
 
-func waitArtEvent(w *wsConn, requestID, event string, timeout time.Duration) (map[string]any, error) {
+func waitArtEvent(w *wsConn, requestID, event string, timeout time.Duration) (artResponse, error) {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		b, err := w.readText(time.Until(deadline))
 		if err != nil {
-			return nil, err
+			return artResponse{}, err
 		}
-		var envelope map[string]any
-		if json.Unmarshal(b, &envelope) != nil {
+		response, present, err := decodeArtResponse(b)
+		if err != nil {
+			return artResponse{}, err
+		}
+		if !present {
 			continue
 		}
-		raw, ok := envelope["data"].(string)
-		if !ok {
-			continue
+		got := response.correlationID()
+		// Some firmware broadcasts image_added without an ID, but the observed
+		// payload contains only an opaque content_id. It does not echo the
+		// transfer connection ID, key, or file metadata, so it cannot be tied
+		// safely to this upload when another Art client may be active.
+		correlated := requestID == "" || got == requestID
+		if response.event == "error" && correlated {
+			return artResponse{}, fmt.Errorf("Art request failed: %v", response.errorCode)
 		}
-		var x map[string]any
-		if json.Unmarshal([]byte(raw), &x) != nil {
-			continue
-		}
-		if x["event"] == "error" {
-			return nil, fmt.Errorf("Art request failed: %v", x["error_code"])
-		}
-		got, _ := x["request_id"].(string)
-		if got == "" {
-			got, _ = x["id"].(string)
-		}
-		if x["event"] == event && (requestID == "" || got == requestID) {
-			return x, nil
+		if response.event == event && correlated {
+			return response, nil
 		}
 	}
-	return nil, fmt.Errorf("Art API returned no %s response", event)
+	return artResponse{}, fmt.Errorf("Art API returned no %s response", event)
 }
 
-func connectionInfo(art map[string]any) (map[string]any, error) {
-	ci, _ := art["conn_info"].(map[string]any)
-	if ci == nil {
-		if raw, ok := art["conn_info"].(string); ok {
-			_ = json.Unmarshal([]byte(raw), &ci)
-		}
+func connectionInfo(art map[string]any) (transferEndpoint, error) {
+	rawValue, ok := art["conn_info"]
+	if !ok {
+		return transferEndpoint{}, errors.New("TV returned no transfer endpoint")
 	}
-	if ci == nil {
-		return nil, errors.New("TV returned no transfer endpoint")
+	raw, err := json.Marshal(rawValue)
+	if err != nil {
+		return transferEndpoint{}, errors.New("TV returned an invalid transfer endpoint")
+	}
+	if len(raw) > 0 && raw[0] == '"' {
+		var encoded string
+		if err := json.Unmarshal(raw, &encoded); err != nil {
+			return transferEndpoint{}, errors.New("TV returned an invalid transfer endpoint")
+		}
+		raw = []byte(encoded)
+	}
+	var wire struct {
+		IP      string          `json:"ip"`
+		Port    json.RawMessage `json:"port"`
+		Secured json.RawMessage `json:"secured"`
+		Key     string          `json:"key"`
+	}
+	if err := json.Unmarshal(raw, &wire); err != nil {
+		return transferEndpoint{}, errors.New("TV returned an invalid transfer endpoint")
+	}
+	port, err := endpointPort(wire.Port)
+	if err != nil {
+		return transferEndpoint{}, err
+	}
+	secured, err := endpointSecured(wire.Secured)
+	if err != nil {
+		return transferEndpoint{}, err
+	}
+	ci := transferEndpoint{IP: wire.IP, Port: port, Secured: secured, Key: wire.Key}
+	if ci.IP == "" && ci.Port == 0 && ci.Key == "" {
+		return transferEndpoint{}, errors.New("TV returned no transfer endpoint")
 	}
 	return ci, nil
 }
 
-func dialTVEndpoint(c *Config, ci map[string]any, timeout time.Duration) (net.Conn, error) {
-	ip, _ := ci["ip"].(string)
-	port := portNumber(ci["port"])
-	secured := boolValue(ci["secured"])
+func endpointPort(raw json.RawMessage) (int, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return 0, nil
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return 0, errors.New("TV returned an invalid transfer port")
+	}
+	switch number := value.(type) {
+	case float64:
+		port := int(number)
+		if number != float64(port) {
+			return 0, errors.New("TV returned an invalid transfer port")
+		}
+		return port, nil
+	case string:
+		port, err := strconv.Atoi(number)
+		if err != nil {
+			return 0, errors.New("TV returned an invalid transfer port")
+		}
+		return port, nil
+	default:
+		return 0, errors.New("TV returned an invalid transfer port")
+	}
+}
+
+func endpointSecured(raw json.RawMessage) (bool, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return false, nil
+	}
+	var value any
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return false, errors.New("TV returned an invalid transfer security flag")
+	}
+	switch secured := value.(type) {
+	case bool:
+		return secured, nil
+	case string:
+		value, err := strconv.ParseBool(secured)
+		if err != nil {
+			return false, errors.New("TV returned an invalid transfer security flag")
+		}
+		return value, nil
+	default:
+		return false, errors.New("TV returned an invalid transfer security flag")
+	}
+}
+
+func dialTVEndpoint(c *Config, ci transferEndpoint, timeout time.Duration) (net.Conn, error) {
+	ip, port, secured := ci.IP, ci.Port, ci.Secured
 	endpointIP := net.ParseIP(ip)
 	if endpointIP != nil && endpointIP.IsUnspecified() {
 		ip, endpointIP = c.IP, net.ParseIP(c.IP)

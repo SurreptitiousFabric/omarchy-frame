@@ -61,6 +61,7 @@ ShellRoot {
                 root.fail("widget has no bar geometry");
                 return;
             }
+            root.expectEqual(root.widget.uiFont, mockBar.fontFamily, "bar font inheritance");
             root.expectEqual(root.widget.modeLabelFor({ok: false}), "…", "checking label");
             root.expectEqual(root.widget.modeLabelFor({ok: true, online: false, mode: "offline"}), "OFFLINE", "offline label");
             root.expectEqual(root.widget.modeLabelFor({ok: true, online: true, mode: "art"}), "ART", "Art label");
@@ -104,7 +105,7 @@ ShellRoot {
         property color foreground: "#eeeeee"
         property color barForeground: "#eeeeee"
         property color urgent: "#ff5555"
-        property string fontFamily: "sans-serif"
+        property string fontFamily: "Frame Contract Sentinel"
         property string position: "top"
         property bool vertical: false
         property bool foregroundAnimationEnabled: false
