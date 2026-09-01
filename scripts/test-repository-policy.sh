@@ -29,6 +29,15 @@ expect_rejected() {
   fi
 }
 
+expect_accepted() {
+  local name=$1
+  local target=$2
+  if ! (cd "$target" && ./scripts/validate-repository.sh >/dev/null 2>&1); then
+    echo "test-repository-policy: rejected $name" >&2
+    exit 1
+  fi
+}
+
 target=$(new_case wrong-id)
 jq '.id = "weak.id"' "$target/manifest.json" >"$target/manifest.json.new"
 mv "$target/manifest.json.new" "$target/manifest.json"
@@ -37,6 +46,28 @@ expect_rejected "wrong plugin id" "$target"
 target=$(new_case unexpected-executable)
 install -m 0755 /dev/null "$target/unexpected-tool"
 expect_rejected "unexpected executable" "$target"
+
+target=$(new_case valid-top-level-script)
+printf '#!/bin/bash\nset -euo pipefail\n' >"$target/scripts/valid-new-check.sh"
+chmod 0755 "$target/scripts/valid-new-check.sh"
+expect_accepted "valid top-level script" "$target"
+
+target=$(new_case broken-top-level-script)
+printf '#!/bin/bash\nif then\n' >"$target/scripts/broken-check.sh"
+chmod 0755 "$target/scripts/broken-check.sh"
+expect_rejected "broken top-level script syntax" "$target"
+
+target=$(new_case nested-executable-script)
+mkdir -p "$target/scripts/nested"
+printf '#!/bin/bash\nif then\n' >"$target/scripts/nested/broken.sh"
+chmod 0755 "$target/scripts/nested/broken.sh"
+expect_rejected "nested executable script" "$target"
+
+target=$(new_case nested-valid-executable-script)
+mkdir -p "$target/scripts/nested"
+printf '#!/bin/bash\nset -euo pipefail\n' >"$target/scripts/nested/valid.sh"
+chmod 0755 "$target/scripts/nested/valid.sh"
+expect_rejected "nested valid executable script" "$target"
 
 target=$(new_case world-writable)
 chmod o+w "$target/README.md"
